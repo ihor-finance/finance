@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compound Interest Calculator | Калькулятор складних відсотків</title>
+<meta name="description" content="Compound Interest Calculator by Ihor Pokhyton. Calculate your investment returns with inflation and tax adjustments.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+/* ─── Reset & Base ──────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #F7F8FB;
+  --bg-header: linear-gradient(135deg, #EEF6F0 0%, #F0F7F2 50%, #F7F8FB 100%);
+  --bg-footer: #EDF0F4;
+  --card: #FFFFFF;
+  --card-border: rgba(0,0,0,0.06);
+  --text: #1A2332;
+  --text-muted: #5E6C80;
+  --accent: #0A7B5A;
+  --accent-glow: rgba(10,123,90,0.12);
+  --input-bg: #F1F4F8;
+  --input-border: #CBD2DC;
+  --shadow: 0 2px 16px rgba(0,0,0,0.05);
+  --shadow-hover: 0 8px 32px rgba(0,0,0,0.09);
+  --radius: 14px;
+  --font: 'DM Sans', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --chart-1: #2563EB;
+  --chart-2: #0A7B5A;
+  --chart-3: #D97706;
+  --chart-4: #7C3AED;
+  --chart-neg: #DC2626;
+  --grid: rgba(0,0,0,0.05);
+}
+
+[data-theme="dark"] {
+  --bg: #0B1120;
+  --bg-header: linear-gradient(135deg, #0D1525 0%, #111B2E 50%, #0B1120 100%);
+  --bg-footer: #070C18;
+  --card: #131D30;
+  --card-border: rgba(255,255,255,0.06);
+  --text: #DFE5EE;
+  --text-muted: #8294AD;
+  --accent: #5DDEB2;
+  --accent-glow: rgba(93,222,178,0.1);
+  --input-bg: #182438;
+  --input-border: #2A3A52;
+  --shadow: 0 2px 16px rgba(0,0,0,0.3);
+  --shadow-hover: 0 8px 32px rgba(0,0,0,0.45);
+  --chart-1: #7DAFFF;
+  --chart-2: #5DDEB2;
+  --chart-3: #FCD34D;
+  --chart-4: #B197FC;
+  --chart-neg: #F87171;
+  --grid: rgba(255,255,255,0.05);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.45s ease, color 0.35s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Animations ────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+.d1 { animation-delay: 0.04s; }
+.d2 { animation-delay: 0.10s; }
+.d3 { animation-delay: 0.16s; }
+.d4 { animation-delay: 0.22s; }
+.d5 { animation-delay: 0.28s; }
+
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.55;} }
+
+/* ─── Typography ────────────────────────────────────── */
+h2 { font-size: 15px; font-weight: 600; }
+h3 { font-size: 14px; font-weight: 600; }
+
+/* ─── Layout ────────────────────────────────────────── */
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 20px 40px; }
+
+/* ─── Header ────────────────────────────────────────── */
+.header {
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--card-border);
+  padding: 16px 24px;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  transform: translateY(0);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+}
+.header.hidden { transform: translateY(-100%); }
+.header.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+[data-theme="dark"] .header.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.3); }
+.header-spacer { height: 72px; } /* reserve space for fixed header */
+
+/* ─── Back to Top ───────────────────────────────────── */
+.back-to-top {
+  position: fixed; bottom: 28px; right: 28px; z-index: 90;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--accent); color: #FFF;
+  border: none; cursor: pointer; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px var(--accent-glow);
+  opacity: 0; pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 0.3s, transform 0.3s;
+}
+.back-to-top.visible {
+  opacity: 1; pointer-events: auto;
+  transform: translateY(0);
+}
+.back-to-top:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px var(--accent-glow);
+}
+.header-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+}
+.logo-group { display: flex; align-items: center; gap: 12px; }
+.logo-icon {
+  width: 38px; height: 38px; border-radius: 11px;
+  background: linear-gradient(135deg, var(--accent), #10B981);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: #FFF; font-weight: 800;
+  box-shadow: 0 2px 12px var(--accent-glow);
+}
+.logo-title { font-size: 17px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
+.logo-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ─── Toggle Buttons ────────────────────────────────── */
+.toggle-group {
+  display: flex; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--input-border); background: var(--input-bg);
+}
+.toggle-btn {
+  padding: 6px 15px; font-size: 12px; font-weight: 400;
+  border: none; background: transparent; color: var(--text-muted);
+  cursor: pointer; font-family: var(--font); transition: all 0.2s;
+}
+.toggle-btn.active {
+  background: var(--accent); color: #FFF; font-weight: 600;
+}
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 10px;
+  border: 1px solid var(--input-border); background: var(--input-bg);
+  font-size: 18px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; transition: all 0.2s;
+}
+.icon-btn:hover { border-color: var(--accent); }
+
+/* ─── Cards ─────────────────────────────────────────── */
+.card {
+  background: var(--card); border-radius: var(--radius);
+  border: 1px solid var(--card-border);
+  padding: 24px 28px; box-shadow: var(--shadow);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.card-title {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+}
+.card-title .dot { color: var(--accent); }
+
+/* ─── Input Grid ────────────────────────────────────── */
+.input-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px;
+}
+.field label {
+  display: block; font-size: 12px; color: var(--text-muted);
+  font-weight: 500; margin-bottom: 6px;
+}
+.field input {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  border: 1.5px solid var(--input-border); background: var(--input-bg);
+  color: var(--text); font-size: 15px; font-family: var(--mono);
+  font-weight: 500; transition: border 0.2s, box-shadow 0.2s;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.field input::-webkit-outer-spin-button,
+.field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.field input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.field-prefix { position: relative; }
+.field-prefix .pre {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 14px; font-weight: 500; pointer-events: none;
+}
+.field-prefix input { padding-left: 28px; }
+
+/* Tax box */
+.tax-box {
+  border-radius: 12px; border: 1px dashed var(--input-border); padding: 12px 14px;
+}
+.tax-box .tax-label {
+  font-size: 12px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px;
+}
+.tax-box .tax-total {
+  color: var(--accent); font-family: var(--mono); font-weight: 600;
+}
+.tax-row { display: flex; gap: 8px; align-items: flex-end; }
+.tax-row .mini-field { flex: 1; }
+.tax-row .mini-field span { font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 3px; }
+.tax-row .mini-field input {
+  width: 100%; padding: 7px 8px; border-radius: 8px;
+  border: 1.5px solid var(--input-border); background: var(--input-bg);
+  color: var(--text); font-size: 13px; font-family: var(--mono);
+  font-weight: 500; transition: border 0.2s, box-shadow 0.2s;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.tax-row .mini-field input::-webkit-outer-spin-button,
+.tax-row .mini-field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.tax-row .mini-field input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.tax-row .plus {
+  padding-bottom: 8px; color: var(--text-muted); font-size: 16px; line-height: 1;
+}
+
+/* ─── Result Cards ──────────────────────────────────── */
+.results-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.result-card {
+  background: var(--card); border-radius: var(--radius); padding: 18px 20px;
+  border: 1px solid var(--card-border); box-shadow: var(--shadow);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.result-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.result-card.highlight {
+  background: linear-gradient(135deg, var(--accent-glow), transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.result-label { font-size: 11.5px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px; }
+.result-value {
+  font-size: 24px; font-weight: 700; font-family: var(--mono);
+  letter-spacing: -0.03em;
+}
+.result-card-sm .result-value { font-size: 18px; }
+.result-card-sm .result-label { font-size: 11px; margin-bottom: 4px; }
+.result-card-sm { padding: 14px 20px; }
+
+/* ─── Charts ────────────────────────────────────────── */
+.charts-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-bottom: 20px; }
+.chart-wrap { height: 310px; }
+
+/* ─── Action Buttons ────────────────────────────────── */
+.actions { display: flex; gap: 10px; margin-bottom: 22px; flex-wrap: wrap; }
+.btn {
+  padding: 12px 26px; border-radius: 12px; font-size: 14px;
+  font-weight: 600; font-family: var(--font); cursor: pointer;
+  transition: all 0.2s; display: flex; align-items: center; gap: 8;
+  border: none;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #10B981);
+  color: #FFF; box-shadow: 0 4px 16px var(--accent-glow);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); }
+.btn-secondary {
+  background: var(--card); color: var(--text);
+  border: 1.5px solid var(--input-border);
+}
+.btn-secondary:hover { border-color: var(--accent); }
+
+/* ─── Table ─────────────────────────────────────────── */
+.table-section { overflow-x: auto; }
+.table-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+thead tr { border-bottom: 2px solid var(--card-border); }
+th {
+  padding: 10px 12px; font-weight: 600; font-size: 11px;
+  color: var(--text-muted); white-space: nowrap;
+}
+th:first-child { text-align: center; }
+th:not(:first-child) { text-align: right; }
+td { padding: 9px 12px; font-family: var(--mono); font-size: 12px; }
+td:first-child { text-align: center; font-weight: 600; color: var(--accent); }
+td:not(:first-child) { text-align: right; }
+tbody tr { border-bottom: 1px solid var(--card-border); transition: background 0.12s; }
+tbody tr:hover { background: var(--accent-glow); }
+
+/* ─── Disclaimer ────────────────────────────────────── */
+.disclaimer { font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 24px; }
+
+/* ─── Footer ────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--card-border);
+  padding: 30px 24px; background: var(--bg-footer); text-align: center;
+}
+.footer-name { font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+.footer-name span { color: var(--accent); }
+.footer-links { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+.footer-link {
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--text-muted); text-decoration: none; font-size: 12px; font-weight: 500;
+  padding: 6px 14px; border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--accent-glow); transition: all 0.2s;
+}
+.footer-link:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.footer-link .badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--accent-glow); color: var(--accent);
+  font-size: 9px; font-weight: 700;
+}
+.footer-copy { font-size: 10px; color: var(--text-muted); margin-top: 14px; opacity: .55; }
+
+/* ─── Responsive ────────────────────────────────────── */
+@media (max-width: 768px) {
+  .input-grid, .results-grid, .charts-grid { grid-template-columns: 1fr !important; }
+  .header-inner { flex-direction: column; align-items: flex-start; }
+  .header-actions { width: 100%; justify-content: flex-end; }
+  .result-value { font-size: 20px !important; }
+  .chart-wrap { height: 260px; }
+  .container { padding: 16px 12px 32px; }
+  .card { padding: 18px 16px; }
+}
+@media (max-width: 480px) {
+  .footer-links { flex-direction: column; align-items: center; }
+}
+
+/* ─── Scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--input-border); border-radius: 3px; }
+
+/* ─── Print ─────────────────────────────────────────── */
+@media print {
+  .header, .header-spacer, .actions, .footer, .back-to-top { display: none; }
+  body { background: #fff; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo-group">
+      <div class="logo-icon">%</div>
+      <div>
+        <div class="logo-title" id="headerTitle">Калькулятор складних відсотків</div>
+        <div class="logo-sub" id="headerSub">Розрахуйте прибуток від ваших інвестицій</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="toggle-group" id="langToggle">
+        <button class="toggle-btn active" data-lang="ua" onclick="setLang('ua')">UA</button>
+        <button class="toggle-btn" data-lang="en" onclick="setLang('en')">EN</button>
+      </div>
+      <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+    </div>
+  </div>
+</header>
+<div class="header-spacer"></div>
+
+<!-- ═══ BACK TO TOP ═══ -->
+<button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="↑">↑</button>
+
+<!-- ═══ MAIN ═══ -->
+<div class="container">
+
+  <!-- ─── Input Card ─── -->
+  <section class="card fade-up d1" style="margin-bottom:20px;">
+    <div class="card-title">
+      <h2><span class="dot">●</span> <span id="inputTitle">Вхідні дані</span></h2>
+    </div>
+    <div class="input-grid">
+      <div class="field field-prefix">
+        <label id="lbl_deposit">Початковий внесок</label>
+        <div class="field-prefix"><span class="pre">$</span>
+          <input type="number" id="deposit" value="1000" min="0" step="100" oninput="recalc()">
+        </div>
+      </div>
+      <div class="field">
+        <label id="lbl_period">Період інвестування (років)</label>
+        <input type="number" id="years" value="9" min="1" max="100" step="1" oninput="recalc()">
+      </div>
+      <div class="field">
+        <label id="lbl_rate">Річна дохідність (%)</label>
+        <input type="number" id="rate" value="8" min="0" max="200" step="0.5" oninput="recalc()">
+      </div>
+      <div class="field field-prefix">
+        <label id="lbl_monthly">Щомісячні поповнення</label>
+        <div class="field-prefix"><span class="pre">$</span>
+          <input type="number" id="monthly" value="0" min="0" step="50" oninput="recalc()">
+        </div>
+      </div>
+      <div class="field">
+        <label id="lbl_inflation">Інфляція, середня (%)</label>
+        <input type="number" id="inflation" value="1" min="0" max="50" step="0.5" oninput="recalc()">
+      </div>
+      <div class="tax-box">
+        <div class="tax-label" id="lbl_tax">Податки <span class="tax-total" id="taxTotalLabel">= 19.5%</span></div>
+        <div class="tax-row">
+          <div class="mini-field">
+            <span id="lbl_pdfo">ПДФО</span>
+            <input type="number" id="incomeTax" value="18" min="0" max="100" step="0.5" oninput="recalc()">
+          </div>
+          <div class="plus">+</div>
+          <div class="mini-field">
+            <span id="lbl_vz">Військовий збір</span>
+            <input type="number" id="milLevy" value="1.5" min="0" max="100" step="0.5" oninput="recalc()">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Result Cards ─── -->
+  <section class="fade-up d2">
+    <div class="results-grid">
+      <div class="result-card" id="rc1">
+        <div class="result-label" id="rl1">Депозит на кінець періоду</div>
+        <div class="result-value" id="rv1" style="color:var(--chart-1)">$0.00</div>
+      </div>
+      <div class="result-card" id="rc2">
+        <div class="result-label" id="rl2">З урахуванням інфляції</div>
+        <div class="result-value" id="rv2" style="color:var(--chart-2)">$0.00</div>
+      </div>
+      <div class="result-card highlight" id="rc3">
+        <div class="result-label" id="rl3">З урахуванням податків та інфляції</div>
+        <div class="result-value" id="rv3" style="color:var(--chart-3)">$0.00</div>
+      </div>
+    </div>
+    <div class="results-grid" style="margin-bottom:20px;">
+      <div class="result-card result-card-sm">
+        <div class="result-label" id="rl4">Загальні внески</div>
+        <div class="result-value" id="rv4" style="color:var(--chart-4)">$0.00</div>
+      </div>
+      <div class="result-card result-card-sm">
+        <div class="result-label" id="rl5">Чистий прибуток</div>
+        <div class="result-value" id="rv5" style="color:var(--chart-2)">$0.00</div>
+      </div>
+      <div class="result-card result-card-sm">
+        <div class="result-label" id="rl6">Прибутковість</div>
+        <div class="result-value" id="rv6" style="color:var(--chart-2)">0.00%</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Charts ─── -->
+  <section class="charts-grid fade-up d3">
+    <div class="card">
+      <div class="card-title"><h3><span class="dot">◆</span> <span id="chartTitle1">Графік зростання депозиту</span></h3></div>
+      <div class="chart-wrap"><canvas id="growthChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><h3><span class="dot">◆</span> <span id="chartTitle2">Структура депозиту</span></h3></div>
+      <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;"><canvas id="doughnutChart"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ─── Actions ─── -->
+  <section class="actions fade-up d4">
+    <button class="btn btn-secondary" onclick="toggleTable()" id="btnTable">
+      <span>📊</span> <span id="btnTableText">Показати таблицю</span>
+    </button>
+  </section>
+
+  <!-- ─── Table ─── -->
+  <section class="card fade-up d5" id="tableSection" style="margin-bottom:24px;display:none;">
+    <div class="table-header">
+      <div class="card-title" style="margin-bottom:0;"><h3><span class="dot">◆</span> <span id="tableTitle">Помісячна таблиця зростання</span></h3></div>
+      <div class="toggle-group" id="viewToggle">
+        <button class="toggle-btn active" data-view="yearly" onclick="setView('yearly')"><span id="lblYearly">Порічно</span></button>
+        <button class="toggle-btn" data-view="monthly" onclick="setView('monthly')"><span id="lblMonthly">Помісячно</span></button>
+      </div>
+    </div>
+    <div class="table-section">
+      <table>
+        <thead>
+          <tr id="tableHead">
+            <th>Рік</th>
+            <th>Без інфляції</th>
+            <th>З інфляцією</th>
+            <th>Чистий прибуток</th>
+            <th>Внески</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="disclaimer fade-up d5" id="disclaimer">* Розрахунки є приблизними та не є інвестиційною порадою.</p>
+</div>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="footer-name" id="footerName">Розроблено <span>Ihor Pokhyton</span></div>
+  <div class="footer-links">
+    <a class="footer-link" href="https://www.linkedin.com/in/ifin/" target="_blank" rel="noopener">
+      <span class="badge">in</span> LinkedIn
+    </a>
+    <a class="footer-link" href="https://seekingalpha.com/author/ihor-pokhyton" target="_blank" rel="noopener">
+      <span class="badge">SA</span> Seeking Alpha
+    </a>
+    <a class="footer-link" href="https://t.me/FinanceAgain" target="_blank" rel="noopener">
+      <span class="badge">TG</span> Telegram
+    </a>
+  </div>
+  <div class="footer-copy">© <span id="footerYear"></span> · Compound Interest Calculator v2.0</div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// i18n
+// ═══════════════════════════════════════════════════════
+const I = {
+  ua: {
+    headerTitle: 'Калькулятор складних відсотків',
+    headerSub: 'Розрахуйте прибуток від ваших інвестицій',
+    inputTitle: 'Вхідні дані',
+    lbl_deposit: 'Початковий внесок',
+    lbl_period: 'Період інвестування (років)',
+    lbl_rate: 'Річна дохідність (%)',
+    lbl_monthly: 'Щомісячні поповнення',
+    lbl_inflation: 'Інфляція, середня (%)',
+    lbl_tax: 'Податки',
+    lbl_pdfo: 'ПДФО',
+    lbl_vz: 'Військовий збір',
+    rl1: 'Депозит на кінець періоду',
+    rl2: 'З урахуванням інфляції',
+    rl3: 'З урахуванням податків та інфляції',
+    rl4: 'Загальні внески',
+    rl5: 'Чистий прибуток',
+    rl6: 'Прибутковість',
+    chartTitle1: 'Графік зростання депозиту',
+    chartTitle2: 'Структура депозиту',
+    btnTableShow: 'Показати таблицю',
+    btnTableHide: 'Сховати таблицю',
+    lblYearly: 'Порічно',
+    lblMonthly: 'Помісячно',
+    tableTitle: 'Помісячна таблиця зростання',
+    thPeriod_y: 'Рік', thPeriod_m: 'Місяць',
+    thNoInf: 'Без інфляції', thInf: 'З інфляцією',
+    thNet: 'Чистий прибуток (після податків)', thContrib: 'Внески',
+    disclaimer: '* Розрахунки є приблизними та не є інвестиційною порадою.',
+    footerName: 'Розроблено',
+    leg1: 'Без інфляції', leg2: 'З інфляцією',
+    leg3: 'Після податків та інфляції', leg4: 'Загальні внески',
+    dLeg1: 'Початковий внесок', dLeg2: 'Поповнення', dLeg3: 'Прибуток', dLeg4: 'Податки',
+    years: 'років',
+  },
+  en: {
+    headerTitle: 'Compound Interest Calculator',
+    headerSub: 'Calculate your investment returns',
+    inputTitle: 'Input Data',
+    lbl_deposit: 'Initial Deposit',
+    lbl_period: 'Investment Period (years)',
+    lbl_rate: 'Annual Return (%)',
+    lbl_monthly: 'Monthly Contributions',
+    lbl_inflation: 'Inflation, average (%)',
+    lbl_tax: 'Taxes',
+    lbl_pdfo: 'Income Tax',
+    lbl_vz: 'Military Levy',
+    rl1: 'End of Period Value',
+    rl2: 'Adjusted for Inflation',
+    rl3: 'After Tax & Inflation',
+    rl4: 'Total Contributions',
+    rl5: 'Net Profit',
+    rl6: 'Return',
+    chartTitle1: 'Deposit Growth Chart',
+    chartTitle2: 'Deposit Composition',
+    btnTableShow: 'Show Table',
+    btnTableHide: 'Hide Table',
+    lblYearly: 'Yearly',
+    lblMonthly: 'Monthly',
+    tableTitle: 'Growth Table',
+    thPeriod_y: 'Year', thPeriod_m: 'Month',
+    thNoInf: 'Without Inflation', thInf: 'With Inflation',
+    thNet: 'Net Profit (after tax)', thContrib: 'Contributions',
+    disclaimer: '* Calculations are approximate and not investment advice.',
+    footerName: 'Developed by',
+    leg1: 'Without Inflation', leg2: 'With Inflation',
+    leg3: 'After Tax & Inflation', leg4: 'Total Contributions',
+    dLeg1: 'Initial Deposit', dLeg2: 'Contributions', dLeg3: 'Profit', dLeg4: 'Taxes',
+    years: 'years',
+  }
+};
+
+let lang = 'ua';
+let view = 'yearly';
+let tableVisible = false;
+let growthChartObj = null;
+let doughnutChartObj = null;
+let lastResult = null;
+
+// ═══════════════════════════════════════════════════════
+// Theme
+// ═══════════════════════════════════════════════════════
+function getSystemDark() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+let isDark = getSystemDark();
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+}
+function toggleTheme() { isDark = !isDark; applyTheme(); recalc(); }
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  isDark = e.matches; applyTheme(); recalc();
+});
+
+// ═══════════════════════════════════════════════════════
+// Language
+// ═══════════════════════════════════════════════════════
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll('#langToggle .toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === l);
+  });
+  applyLang();
+  recalc();
+}
+
+function applyLang() {
+  const t = I[lang];
+  const ids = ['headerTitle','headerSub','inputTitle','lbl_deposit','lbl_period','lbl_rate',
+    'lbl_monthly','lbl_inflation','lbl_pdfo','lbl_vz','rl1','rl2','rl3','rl4','rl5','rl6',
+    'chartTitle1','chartTitle2','lblYearly','lblMonthly','tableTitle','disclaimer'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && t[id]) el.textContent = t[id];
+  });
+  document.getElementById('lbl_tax').innerHTML = t.lbl_tax + ' <span class="tax-total" id="taxTotalLabel">= ' + getTotalTax().toFixed(1) + '%</span>';
+  document.getElementById('footerName').innerHTML = t.footerName + ' <span>Ihor Pokhyton</span>';
+  document.getElementById('btnTableText').textContent = tableVisible ? t.btnTableHide : t.btnTableShow;
+}
+
+// ═══════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════
+function val(id) { return parseFloat(document.getElementById(id).value) || 0; }
+function getTotalTax() { return val('incomeTax') + val('milLevy'); }
+function fmt(n) { return isFinite(n) ? n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '0.00'; }
+
+// Animated counter
+const counters = {};
+function animateValue(elId, target, prefix='$', suffix='') {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const key = elId;
+  if (counters[key]) cancelAnimationFrame(counters[key].raf);
+  const from = counters[key] ? counters[key].current : 0;
+  const start = performance.now();
+  const dur = 500;
+  function tick(now) {
+    const p = Math.min((now - start) / dur, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const current = from + (target - from) * ease;
+    counters[key] = { current, raf: null };
+    el.textContent = prefix + fmt(current) + suffix;
+    if (p < 1) counters[key].raf = requestAnimationFrame(tick);
+  }
+  counters[key] = { current: from, raf: requestAnimationFrame(tick) };
+}
+
+// ═══════════════════════════════════════════════════════
+// Calculation Engine (matches Excel formulas)
+// ═══════════════════════════════════════════════════════
+function calculate() {
+  const deposit = val('deposit');
+  const years = val('years');
+  const rate = val('rate');
+  const monthly = val('monthly');
+  const inflation = val('inflation');
+  const taxRate = getTotalTax();
+  const months = Math.round(years * 12);
+  const mRate = rate / 100 / 12;
+  const mRateInf = (rate - inflation) / 100 / 12;
+  const rows = [];
+
+  let bNoInf = deposit, bInf = deposit;
+  for (let m = 1; m <= months; m++) {
+    bNoInf = bNoInf * (1 + mRate) + monthly;
+    bInf = bInf * (1 + mRateInf) + monthly;
+    const tc = deposit + monthly * m;
+    const profitInf = bInf - tc;
+    const net = profitInf * (1 - taxRate / 100);
+    rows.push({ month: m, year: Math.ceil(m / 12), noInf: bNoInf, inf: bInf, net, tc, afterTax: tc + net });
+  }
+
+  const last = rows.length ? rows[rows.length - 1] : { noInf: deposit, inf: deposit, afterTax: deposit, tc: deposit, net: 0 };
+  return { rows, endVal: last.noInf, infVal: last.inf, afterTax: last.afterTax, tc: last.tc, net: last.net };
+}
+
+// ═══════════════════════════════════════════════════════
+// Recalc & Render
+// ═══════════════════════════════════════════════════════
+function recalc() {
+  const r = calculate();
+  lastResult = r;
+
+  // Update tax label
+  document.getElementById('taxTotalLabel').textContent = '= ' + getTotalTax().toFixed(1) + '%';
+
+  // Animate result cards
+  animateValue('rv1', r.endVal);
+  animateValue('rv2', r.infVal);
+  animateValue('rv3', r.afterTax);
+  animateValue('rv4', r.tc);
+  animateValue('rv5', r.net);
+  const pct = r.tc > 0 ? ((r.afterTax - r.tc) / r.tc * 100) : 0;
+  animateValue('rv6', pct, '', '%');
+
+  // Color for return
+  const rv6 = document.getElementById('rv6');
+  rv6.style.color = pct >= 0 ? 'var(--chart-2)' : 'var(--chart-neg)';
+
+  renderCharts(r);
+  renderTable(r);
+}
+
+// ═══════════════════════════════════════════════════════
+// Charts
+// ═══════════════════════════════════════════════════════
+function getChartColors() {
+  const s = getComputedStyle(document.documentElement);
+  return {
+    c1: s.getPropertyValue('--chart-1').trim(),
+    c2: s.getPropertyValue('--chart-2').trim(),
+    c3: s.getPropertyValue('--chart-3').trim(),
+    c4: s.getPropertyValue('--chart-4').trim(),
+    neg: s.getPropertyValue('--chart-neg').trim(),
+    grid: s.getPropertyValue('--grid').trim(),
+    muted: s.getPropertyValue('--text-muted').trim(),
+    card: s.getPropertyValue('--card').trim(),
+    text: s.getPropertyValue('--text').trim(),
+    border: s.getPropertyValue('--card-border').trim(),
+  };
+}
+
+function renderCharts(r) {
+  const t = I[lang];
+  const c = getChartColors();
+  const yearly = r.rows.filter(x => x.month % 12 === 0);
+  if (!yearly.length) return;
+  const labels = yearly.map(x => x.year.toString());
+
+  // Tooltip styling
+  const tooltipOpts = {
+    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+    titleColor: isDark ? '#F1F5F9' : '#0F172A',
+    bodyColor: isDark ? '#CBD5E1' : '#475569',
+    borderColor: isDark ? '#334155' : '#E2E8F0',
+    borderWidth: 1, padding: 12, cornerRadius: 10, displayColors: true,
+  };
+
+  // Growth chart
+  if (growthChartObj) growthChartObj.destroy();
+  growthChartObj = new Chart(document.getElementById('growthChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: t.leg1, data: yearly.map(x => x.noInf), borderColor: c.c1, backgroundColor: c.c1 + '15', fill: false, tension: .35, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: c.c1 },
+        { label: t.leg2, data: yearly.map(x => x.inf), borderColor: c.c2, backgroundColor: c.c2 + '15', fill: false, tension: .35, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: c.c2 },
+        { label: t.leg3, data: yearly.map(x => x.afterTax), borderColor: c.c3, backgroundColor: c.c3 + '15', fill: true, tension: .35, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: c.c3 },
+        { label: t.leg4, data: yearly.map(x => x.tc), borderColor: c.c4, backgroundColor: c.c4 + '08', fill: false, tension: 0, borderWidth: 2, borderDash: [6,4], pointRadius: 2, pointBackgroundColor: c.c4 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { color: c.muted, padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 11, family: "'DM Sans'" } } },
+        tooltip: { ...tooltipOpts, callbacks: { label: ctx => ' ' + ctx.dataset.label + ': $' + fmt(ctx.parsed.y) } }
+      },
+      scales: {
+        x: { grid: { color: c.grid }, ticks: { color: c.muted, font: { size: 11 } } },
+        y: { grid: { color: c.grid }, ticks: { color: c.muted, font: { size: 11 }, callback: v => '$' + fmt(v) } },
+      }
+    }
+  });
+
+  // Doughnut
+  const deposit = val('deposit');
+  const monthly = val('monthly');
+  const totalTax = getTotalTax();
+  const totalContrib = r.tc;
+  const monthlyTotal = totalContrib - deposit;
+  const taxAmt = (r.infVal - totalContrib) * (totalTax / 100);
+
+  if (doughnutChartObj) doughnutChartObj.destroy();
+  doughnutChartObj = new Chart(document.getElementById('doughnutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: [t.dLeg1, t.dLeg2, t.dLeg3, t.dLeg4],
+      datasets: [{
+        data: [Math.max(0, deposit), Math.max(0, monthlyTotal), Math.max(0, r.net), Math.max(0, taxAmt)],
+        backgroundColor: [c.c1, c.c4, c.c2, c.neg],
+        borderColor: c.card, borderWidth: 3, hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: c.muted, padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 11, family: "'DM Sans'" } } },
+        tooltip: { ...tooltipOpts, callbacks: { label: ctx => ' ' + ctx.label + ': $' + fmt(ctx.parsed) } }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// Table
+// ═══════════════════════════════════════════════════════
+function renderTable(r) {
+  const t = I[lang];
+  const head = document.getElementById('tableHead');
+  const periodTh = view === 'yearly' ? t.thPeriod_y : t.thPeriod_m;
+  head.innerHTML = `<th>${periodTh}</th><th>${t.thNoInf}</th><th>${t.thInf}</th><th>${t.thNet}</th><th>${t.thContrib}</th>`;
+
+  const data = view === 'yearly' ? r.rows.filter(x => x.month % 12 === 0) : r.rows;
+  const body = document.getElementById('tableBody');
+  body.innerHTML = data.map(row => `
+    <tr>
+      <td>${view === 'yearly' ? row.year : row.month}</td>
+      <td>$${fmt(row.noInf)}</td>
+      <td>$${fmt(row.inf)}</td>
+      <td style="color:${row.net >= 0 ? 'var(--chart-2)' : 'var(--chart-neg)'}">$${fmt(row.net)}</td>
+      <td style="color:var(--text-muted)">$${fmt(row.tc)}</td>
+    </tr>
+  `).join('');
+}
+
+function setView(v) {
+  view = v;
+  document.querySelectorAll('#viewToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  if (lastResult) renderTable(lastResult);
+}
+
+function toggleTable() {
+  tableVisible = !tableVisible;
+  document.getElementById('tableSection').style.display = tableVisible ? 'block' : 'none';
+  document.getElementById('btnTableText').textContent = tableVisible ? I[lang].btnTableHide : I[lang].btnTableShow;
+}
+
+// ═══════════════════════════════════════════════════════
+// Scroll: auto-hide header + back-to-top
+// ═══════════════════════════════════════════════════════
+(function() {
+  const header = document.querySelector('.header');
+  const btt = document.getElementById('backToTop');
+  let lastY = 0;
+  let ticking = false;
+
+  window.addEventListener('scroll', function() {
+    if (!ticking) {
+      requestAnimationFrame(function() {
+        const y = window.scrollY;
+        // Hide/show header
+        if (y > 80) {
+          header.classList.add('scrolled');
+          if (y > lastY && y > 160) {
+            header.classList.add('hidden');    // scrolling down
+          } else {
+            header.classList.remove('hidden'); // scrolling up
+          }
+        } else {
+          header.classList.remove('scrolled', 'hidden');
+        }
+        // Back to top button
+        if (y > 500) {
+          btt.classList.add('visible');
+        } else {
+          btt.classList.remove('visible');
+        }
+        lastY = y;
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════
+document.getElementById('footerYear').textContent = new Date().getFullYear();
+applyTheme();
+applyLang();
+recalc();
+</script>
+</body>
+</html>
