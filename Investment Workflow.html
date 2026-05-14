@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capital Times — Investment Workflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── TOKENS ─────────────────────────────────────────────────────── */
+:root{
+  /* brand */
+  --copper:        #C2652A;
+  --copper-deep:   #A3511F;
+  --copper-soft:   #F4E4D6;   /* tinted bg */
+  --copper-tint:   #FBF1E7;   /* very soft */
+  --navy:          #1B365D;
+  --navy-deep:     #142848;
+  --navy-tint:     #EEF2F8;
+
+  /* warm neutrals */
+  --bg:            #F5F2EC;
+  --bg-2:          #ECE7DD;
+  --surface:       #FFFFFF;
+  --line:          #E6DFD2;
+  --line-strong:   #D5CCBB;
+
+  --ink:           #1C1A17;
+  --ink-2:         #3C3833;
+  --muted:         #79726A;
+  --muted-2:       #A39A8E;
+
+  --ok:            #3F7A52;
+  --err:           var(--copper-deep);
+
+  --shadow-sm: 0 1px 0 rgba(28,26,23,.04), 0 1px 2px rgba(28,26,23,.04);
+  --shadow-md: 0 1px 0 rgba(28,26,23,.04), 0 4px 16px -6px rgba(28,26,23,.08);
+  --shadow-lg: 0 1px 0 rgba(28,26,23,.04), 0 20px 40px -20px rgba(28,26,23,.18);
+
+  --r-xs: 8px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  --font: 'DM Sans', system-ui, -apple-system, Segoe UI, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+
+/* ─── BASE ───────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--ink);
+  min-height:100vh;
+  line-height:1.5;
+  font-feature-settings:"ss01","cv11";
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;color:inherit}
+a{color:inherit;text-decoration:none}
+
+/* ─── APP SHELL ──────────────────────────────────────────────────── */
+.app{max-width:1120px;margin:0 auto;padding:24px 32px 80px}
+
+/* ─── TOP BAR ────────────────────────────────────────────────────── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  box-shadow:var(--shadow-sm);
+}
+.brand{display:flex;align-items:center;gap:14px}
+.brand .logo{
+  color:var(--copper);
+  display:block;
+  height:26px;width:auto;
+}
+.brand .divider{
+  width:1px;height:24px;background:var(--line-strong);
+}
+.brand .app-name{
+  font-size:13px;font-weight:500;color:var(--ink-2);
+  letter-spacing:.01em;
+}
+.brand .app-name small{
+  display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:1px;
+}
+
+.top-right{display:flex;align-items:center;gap:10px}
+.pill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:var(--r-pill);
+  background:var(--bg-2);color:var(--ink-2);
+  font-size:12px;font-weight:500;
+}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.icon-btn{
+  width:36px;height:36px;border-radius:var(--r-sm);
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--bg-2);color:var(--ink-2);
+  transition:background .15s,color .15s;
+}
+.icon-btn:hover{background:var(--copper-soft);color:var(--copper-deep)}
+.icon-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75}
+
+/* ─── PAGE HEAD ──────────────────────────────────────────────────── */
+.page-head{padding:40px 4px 28px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.page-head h1{
+  font-size:40px;font-weight:600;letter-spacing:-.02em;line-height:1.05;
+  color:var(--ink);
+}
+.page-head h1 .accent{color:var(--copper)}
+.page-head .lead{
+  margin-top:10px;color:var(--muted);font-size:15px;max-width:560px;
+}
+.page-head .meta{
+  display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px;
+}
+.page-head .meta .dot-sep{width:3px;height:3px;border-radius:50%;background:var(--muted-2)}
+
+/* ─── STEPS (tabs) ───────────────────────────────────────────────── */
+.steps{
+  display:flex;gap:8px;padding:6px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  box-shadow:var(--shadow-sm);
+  margin-bottom:24px;
+}
+.step{
+  flex:1;display:flex;align-items:center;gap:12px;
+  padding:14px 16px;border-radius:var(--r-sm);
+  color:var(--muted);font-size:14px;font-weight:500;
+  transition:background .15s,color .15s;
+  text-align:left;
+}
+.step:hover{background:var(--bg)}
+.step .num{
+  width:26px;height:26px;flex-shrink:0;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--bg-2);color:var(--muted);
+  font-size:12px;font-weight:600;
+  font-variant-numeric:tabular-nums;
+}
+.step .lbl{display:flex;flex-direction:column;line-height:1.2}
+.step .lbl small{font-size:11px;font-weight:400;color:var(--muted-2);margin-top:2px}
+.step.active{background:var(--ink);color:#FBF8F2}
+.step.active .num{background:var(--copper);color:#fff}
+.step.active .lbl small{color:#B5B0A6}
+
+/* ─── SECTION HEADER ─────────────────────────────────────────────── */
+.section{margin-top:28px}
+.section:first-child{margin-top:0}
+.section-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:12px;padding:0 4px;
+}
+.section-head h3{
+  font-size:13px;font-weight:600;color:var(--ink-2);
+  display:flex;align-items:center;gap:8px;
+}
+.section-head h3 .kicker{
+  font-family:var(--mono);font-size:11px;color:var(--copper);font-weight:500;
+}
+.section-head .hint{font-size:12.5px;color:var(--muted)}
+
+/* ─── CARD ──────────────────────────────────────────────────────── */
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  box-shadow:var(--shadow-sm);
+  overflow:hidden;
+}
+.card .body{padding:24px 28px}
+.card + .card{margin-top:14px}
+
+/* ─── KV ROWS ───────────────────────────────────────────────────── */
+.kv{display:flex;align-items:flex-start;gap:24px;padding:14px 0;border-bottom:1px dashed var(--line)}
+.kv:first-child{padding-top:2px}
+.kv:last-child{border-bottom:none;padding-bottom:2px}
+.kv .k{min-width:200px;flex-shrink:0;color:var(--muted);font-size:13px;font-weight:500;padding-top:1px}
+.kv .v{flex:1;color:var(--ink);font-size:14.5px;font-weight:500;line-height:1.55}
+.kv .v.subtle{color:var(--muted-2);font-weight:400;font-style:italic}
+
+/* ─── BADGES ────────────────────────────────────────────────────── */
+.badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 11px;font-size:12px;font-weight:500;
+  border-radius:var(--r-pill);
+  margin:2px 4px 2px 0;
+  letter-spacing:0;
+}
+.badge::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.badge.allow{background:var(--navy-tint);color:var(--navy)}
+.badge.deny {background:var(--copper-tint);color:var(--copper-deep)}
+
+/* ─── STATS ─────────────────────────────────────────────────────── */
+.stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+  margin-bottom:22px;
+}
+.stat{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  padding:18px 18px 16px;
+  box-shadow:var(--shadow-sm);
+  position:relative;
+  overflow:hidden;
+}
+.stat .lbl{font-size:11.5px;color:var(--muted);font-weight:500;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.stat .lbl::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--copper)}
+.stat.navy .lbl::before{background:var(--navy)}
+.stat .num{
+  font-size:26px;font-weight:600;color:var(--ink);letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;
+  line-height:1.1;
+}
+.stat .num.muted{color:var(--muted-2);font-weight:400}
+
+/* ─── MODE TOGGLE ───────────────────────────────────────────────── */
+.mode-toggle{
+  display:inline-flex;padding:4px;gap:4px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r-pill);
+  box-shadow:var(--shadow-sm);
+}
+.mode-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:7px 16px;border-radius:var(--r-pill);
+  font-size:13px;font-weight:500;color:var(--muted);
+  transition:background .15s,color .15s;
+}
+.mode-btn:hover{color:var(--ink-2)}
+.mode-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.75}
+.mode-btn.active{background:var(--ink);color:#FBF8F2}
+
+/* ─── FORM ──────────────────────────────────────────────────────── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.field{margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.field label{
+  display:flex;align-items:center;gap:6px;
+  font-size:12.5px;font-weight:500;color:var(--ink-2);
+  margin-bottom:7px;
+}
+.field label .req{color:var(--copper);font-size:14px;line-height:0}
+.field .hint{font-size:11.5px;color:var(--muted-2);margin-top:6px}
+
+.input,.select,.textarea{
+  width:100%;
+  font-size:14px;font-weight:400;color:var(--ink);
+  background:var(--surface);
+  border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);
+  padding:11px 14px;
+  transition:border-color .15s, box-shadow .15s, background .15s;
+}
+.input::placeholder,.textarea::placeholder{color:var(--muted-2);font-weight:400}
+.input:hover,.select:hover,.textarea:hover{border-color:var(--muted-2)}
+.input:focus,.select:focus,.textarea:focus{
+  outline:none;
+  border-color:var(--copper);
+  box-shadow:0 0 0 4px var(--copper-tint);
+}
+.textarea{min-height:88px;resize:vertical;line-height:1.55}
+.select{
+  appearance:none;cursor:pointer;padding-right:36px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2379726A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;
+}
+
+/* ─── CHIPS ─────────────────────────────────────────────────────── */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 13px;font-size:12.5px;font-weight:500;
+  border-radius:var(--r-pill);
+  background:var(--surface);color:var(--muted);
+  border:1px solid var(--line-strong);
+  cursor:pointer;user-select:none;
+  transition:all .15s;
+}
+.chip::before{content:"+";font-size:14px;line-height:0;color:var(--muted-2);font-weight:400}
+.chip:hover{border-color:var(--muted-2);color:var(--ink-2)}
+.chip.on-allow{background:var(--navy-tint);color:var(--navy);border-color:transparent}
+.chip.on-allow::before{content:"✓";color:var(--navy)}
+.chip.on-deny{background:var(--copper-tint);color:var(--copper-deep);border-color:transparent}
+.chip.on-deny::before{content:"✓";color:var(--copper-deep)}
+
+/* ─── BUTTONS ───────────────────────────────────────────────────── */
+.actions{display:flex;gap:10px;align-items:center;margin-top:20px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 20px;font-size:13.5px;font-weight:500;
+  border-radius:var(--r-sm);
+  transition:all .15s;letter-spacing:-.005em;
+  white-space:nowrap;
+}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.75}
+.btn:active{transform:translateY(0.5px)}
+.btn-primary{background:var(--copper);color:#fff;box-shadow:0 1px 0 rgba(28,26,23,.04),inset 0 1px 0 rgba(255,255,255,.15)}
+.btn-primary:hover{background:var(--copper-deep)}
+.btn-dark{background:var(--ink);color:#FBF8F2;box-shadow:0 1px 0 rgba(28,26,23,.04),inset 0 1px 0 rgba(255,255,255,.06)}
+.btn-dark:hover{background:#000}
+.btn-ghost{background:var(--surface);color:var(--ink-2);border:1px solid var(--line-strong)}
+.btn-ghost:hover{background:var(--bg-2);border-color:var(--muted-2)}
+.btn-link{color:var(--muted);padding:11px 8px;font-weight:500}
+.btn-link:hover{color:var(--copper-deep)}
+
+.status{font-size:13px;color:var(--ok);font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.status::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.error{font-size:13px;color:var(--err);font-weight:500}
+
+/* ─── OUTPUT BLOCK ──────────────────────────────────────────────── */
+.output{
+  margin-top:20px;
+  background:var(--ink);
+  color:#EDE6DA;
+  border-radius:var(--r-md);
+  overflow:hidden;
+  box-shadow:var(--shadow-md);
+}
+.output-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.06);
+}
+.output-head .lbl{
+  font-size:12px;font-weight:500;color:#B5B0A6;letter-spacing:.02em;
+  display:flex;align-items:center;gap:10px;
+}
+.output-head .lbl::before{
+  content:"";width:8px;height:8px;border-radius:50%;background:var(--copper);
+  box-shadow:0 0 0 3px rgba(194,101,42,.18);
+}
+.output-head .copy{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 13px;border-radius:var(--r-sm);
+  font-size:12.5px;font-weight:500;color:#EDE6DA;
+  background:rgba(255,255,255,.06);
+  transition:background .15s;
+}
+.output-head .copy:hover{background:rgba(255,255,255,.12)}
+.output-head .copy svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.75}
+.output-body{
+  padding:22px 24px;
+  font-family:var(--mono);
+  font-size:13px;line-height:1.75;
+  white-space:pre-wrap;
+  color:#E8DFCC;
+}
+
+/* ─── FOOTER ────────────────────────────────────────────────────── */
+.footer{
+  margin-top:56px;padding:18px 4px;
+  display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid var(--line);
+  font-size:12px;color:var(--muted-2);
+}
+
+/* ─── RESPONSIVE ────────────────────────────────────────────────── */
+@media (max-width:780px){
+  .app{padding:16px 16px 60px}
+  .topbar{padding:12px 14px}
+  .page-head{padding:28px 4px 20px}
+  .page-head h1{font-size:30px}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .steps{flex-direction:column;gap:4px}
+  .step{padding:11px 14px}
+  .kv{flex-direction:column;gap:4px}
+  .kv .k{min-width:0}
+  .card .body{padding:20px}
+  .footer{flex-direction:column;align-items:flex-start;gap:6px}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ─── TOP BAR ─────────────────────────────────────── -->
+  <div class="topbar">
+    <div class="brand">
+      <!-- inline logo, recolored via currentColor -->
+      <svg class="logo" viewBox="0 130 2048 260" xmlns="http://www.w3.org/2000/svg" aria-label="Capital Times">
+        <path d="M 1941.55 289.664 C 1948.21 308.127 1970.7 310.4 1986.51 305.393 C 2008.32 298.487 2000.22 284.807 1981.24 281.295 C 1956.51 276.298 1905.81 276.122 1898.76 244.336 C 1890.92 208.941 1926.46 192.418 1955.18 189.824 C 1984.46 187.181 2021.28 187.649 2040.44 213.487 C 2044.33 218.727 2046.1 225.121 2048 231.087 L 2048 234.874 L 2048 278.796 L 2048 299.234 C 2037.19 325.171 2014.18 332.9 1988.26 336.573 C 1952.45 341.647 1897.51 333.574 1891.34 289.934 C 1908.07 290.007 1924.81 289.917 1941.55 289.664 z" fill="currentColor"/>
+        <path d="M 2048 278.796 C 2031.16 234.58 1961.05 252.635 1949.22 234.388 C 1944.57 217.1 1978.31 216.516 1988.32 220.462 C 1998.34 224.413 2000.2 225.608 2005 234.965 C 2019.33 234.801 2033.67 234.771 2048 234.874 L 2048 278.796 z" fill="var(--surface)"/>
+        <path d="M 1463.67 189.455 C 1470.75 189.382 1477.81 190.185 1484.69 191.846 C 1500.25 195.685 1510.65 203.186 1518.88 216.826 C 1520.55 214.562 1522.39 212.428 1524.39 210.441 C 1554.75 179.86 1622.07 179.453 1634.24 228.932 C 1637.35 241.567 1636.2 260.335 1636.18 273.738 L 1636.02 334.048 L 1589.19 334.059 L 1589.37 263.864 C 1589.38 253.052 1589.94 240.476 1581.73 232.439 C 1570.75 221.206 1544.85 222.611 1534.47 233.946 C 1519.48 250.297 1524.06 288.237 1524.19 309.75 L 1524.19 334.064 L 1476.9 334.176 C 1476.75 312.476 1477.19 290.707 1477.14 268.992 C 1477.11 255.374 1478.27 239.259 1466.16 229.89 C 1454.58 220.95 1433.53 223.172 1423.38 233.339 C 1416.57 240.158 1413.19 250.717 1413.07 260.227 C 1412.75 284.791 1412.96 309.457 1413.03 334.028 L 1367.4 334.107 L 1367.29 193.546 L 1410.94 193.475 L 1411.2 213.72 C 1412.06 212.714 1412.94 211.723 1413.84 210.746 C 1428.08 195.235 1443.29 190.373 1463.67 189.455 z" fill="currentColor"/>
+        <path d="M 484.604 190.246 C 489.189 189.777 498.872 189.684 503.372 190.147 C 519.132 191.65 533.608 199.486 543.483 211.861 C 568.148 242.312 565.16 299.286 534.038 324.557 C 512.594 341.969 474.261 343.256 454.246 322.889 C 451.78 320.381 449.315 317.221 447.108 314.453 C 446.807 328.038 447.056 342.585 447.042 356.248 L 447.066 384.323 C 432.368 384.54 417.45 384.451 402.732 384.491 L 402.402 193.556 C 415.67 193.127 430.583 193.491 443.975 193.551 C 444.811 199.368 445.186 207.753 445.62 213.801 C 456.068 199.179 467.579 193.423 484.604 190.246 z" fill="currentColor"/>
+        <path d="M 472.654 225.418 C 524.913 218.69 529.655 290.122 489.194 302.308 C 439.672 309.936 431.122 238.901 472.654 225.418 z" fill="var(--surface)"/>
+        <path d="M 1748.59 189.38 C 1775.42 186.478 1836.36 188.067 1857.22 205.044 C 1868.41 214.142 1872.61 221.503 1874.6 235.191 L 1824.14 235.218 C 1820.25 225.421 1814.38 222.901 1804.64 219.812 C 1792.31 215.902 1726.27 212.691 1728.33 233.132 C 1742.33 254.493 1877.49 229.619 1879.65 283.402 C 1881.47 328.9 1833.99 334.798 1800.25 337.651 C 1769.61 339.223 1722.1 338.813 1695.47 322.323 C 1681.93 313.94 1676.37 303.606 1673.06 288.659 L 1729.02 288.414 C 1738.09 309.582 1770.3 308.425 1789.7 308.025 C 1800.24 307.228 1817.31 306.798 1825.08 298.68 C 1832.12 291.32 1821.3 284.697 1814.81 283.321 C 1773.73 274.615 1723.61 283.461 1687 260.052 C 1681.23 256.36 1676.61 247.097 1676.21 240.448 C 1672.39 199.784 1717.83 192.368 1748.59 189.38 z" fill="currentColor"/>
+        <path d="M 90.5294 144.429 C 123.424 140.735 161.505 149.388 182.609 176.384 C 192.765 189.376 196.606 202.198 199.784 218.031 L 152.801 218.972 C 152.594 218.205 152.376 217.441 152.147 216.68 C 143.327 187.442 113.559 175.909 86.0381 184.451 C 73.1794 188.319 62.4515 197.258 56.328 209.208 C 43.0973 234.791 48.5389 279.733 76.6268 293.022 C 103.898 305.924 134.771 300.218 149.213 271.68 C 150.559 268.478 151.66 264.172 152.635 260.749 C 168.282 261.507 183.942 261.991 199.606 262.201 C 192.542 308.274 163.316 330.909 118.653 337.146 C 22.9254 350.513 -33.1257 255.341 22.2269 178.246 C 37.4972 156.977 65.6524 146.937 90.5294 144.429 z" fill="currentColor"/>
+        <path d="M 282.717 189.419 C 310.045 187.044 357.828 190.334 363.003 225.55 C 366.361 248.396 363.364 273.715 364.364 296.87 C 364.819 307.412 369.921 302.712 375.233 307.791 C 376.501 313.174 375.908 327.74 375.828 333.959 C 360.591 334.161 345.067 334.042 329.803 334.08 C 326.729 326.549 325.647 323.505 323.964 315.578 C 301.001 341.211 258.775 345.896 230.854 326.02 C 215.61 312.486 213.098 285.907 225.794 270.905 C 244.36 248.966 292.712 248.415 319.351 245.493 C 319.49 240.919 319.89 234.952 317.712 230.738 C 310.658 217.091 289.658 216.539 277.402 222.443 C 270.321 225.853 268.479 229.584 266.098 236.872 L 222.805 237.068 C 228.171 201.229 250.574 192.963 282.717 189.419 z" fill="currentColor"/>
+        <path d="M 316.134 271.385 L 318.365 271.39 C 318.614 271.708 318.862 272.027 319.11 272.345 C 324.294 302.149 293.838 313.955 269.982 306.011 C 269.698 305.803 269.416 305.593 269.134 305.381 C 265.259 302.458 262.728 299.894 262.299 294.803 C 260.459 272.981 301.493 273.059 316.134 271.385 z" fill="var(--surface)"/>
+        <path d="M 841.543 189.396 C 859.466 187.213 894.132 190.127 908.311 203.86 C 929.722 224.596 918.455 269.798 921.299 297.195 C 922.406 307.864 927.067 302.681 932.079 307.442 C 933.56 311.519 932.876 329.034 932.827 334.005 L 886.615 334.091 C 883.668 326.899 882.443 323.16 880.904 315.611 C 856.452 342.051 814.54 346.226 786.197 323.742 C 780.396 316.964 776.804 310.579 775.797 301.484 C 769.897 248.241 839.827 249.422 876.807 245.422 C 877.181 234.214 875.128 223.995 863.217 220.566 C 846.446 215.737 829.437 219.48 823.601 236.734 L 780.847 236.913 C 785.17 201.129 810.38 192.796 841.543 189.396 z" fill="currentColor"/>
+        <path d="M 872.759 271.426 L 875.488 271.192 L 876.538 272.501 C 881.379 300.894 852.708 313.697 828.649 306.321 C 820.806 301.559 816.063 291.975 822.799 284.36 C 832.281 273.64 858.45 273.055 872.759 271.426 z" fill="var(--surface)"/>
+        <path d="M 1083.13 146.682 C 1101.71 145.918 1125.57 146.585 1144.58 146.608 L 1260.24 146.709 C 1260.3 159.058 1260.28 171.406 1260.19 183.755 C 1238.4 183.966 1216.62 184.009 1194.84 183.883 L 1194.79 267.75 L 1194.8 333.995 L 1148.64 334.09 L 1148.4 183.888 C 1127.25 184.344 1104.42 183.945 1083.15 183.949 L 1083.13 146.682 z" fill="currentColor"/>
+        <path d="M 676.134 155.115 C 690.647 154.811 705.869 155.046 720.436 155.056 L 720.596 193.559 L 759.24 193.563 L 759.168 224.89 L 720.473 224.902 C 720.537 244.518 720.135 264.392 720.469 284.005 C 720.538 288.067 722.138 296.764 725.425 299.29 C 733.175 305.246 749.572 302.454 758.953 301.471 L 759.039 321.25 L 759.12 333.416 C 733.66 336.589 681.808 341.64 677.483 307.532 C 674.456 283.667 676.025 249.646 676.058 224.996 L 650.978 225.101 L 650.961 193.692 L 676.158 193.588 C 675.958 180.947 676.14 167.8 676.134 155.115 z" fill="currentColor"/>
+        <path d="M 960.009 143.817 L 1004.6 143.659 L 1004.71 333.903 C 990.99 334.458 973.952 334.02 959.956 334.061 L 960.009 143.817 z" fill="currentColor"/>
+        <path d="M 1282.99 193.432 L 1328.69 193.479 L 1328.75 334.022 L 1282.89 334.068 L 1282.99 193.432 z" fill="currentColor"/>
+        <path d="M 584.473 193.366 L 629.554 193.278 C 629.803 223.671 629.847 298.663 629.341 332.375 C 628.799 333.02 628.336 333.571 627.952 334.028 L 584.653 334.059 C 583.593 288.536 584.473 239.143 584.473 193.366 z" fill="currentColor"/>
+        <path d="M 1283.02 132.762 C 1296.84 132.185 1314.43 132.682 1328.55 132.667 L 1328.69 170.482 L 1282.98 170.499 L 1283.02 132.762 z" fill="currentColor"/>
+        <path d="M 584.501 132.779 L 629.49 132.662 C 629.59 145.363 629.538 158.065 629.335 170.765 L 584.445 170.718 L 584.501 132.779 z" fill="currentColor"/>
+      </svg>
+      <div class="divider"></div>
+      <div class="app-name">
+        Investment Workflow
+        <small>Внутрішній портфельний інструмент</small>
+      </div>
+    </div>
+
+    <div class="top-right">
+      <span class="pill"><span class="dot"></span>Active session</span>
+      <button class="icon-btn" title="Налаштування" aria-label="Налаштування">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button class="icon-btn" title="Профіль" aria-label="Профіль">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── PAGE HEAD ────────────────────────────────────── -->
+  <div class="page-head">
+    <div>
+      <h1>Investment <span class="accent">Workflow</span></h1>
+      <p class="lead">Мандат, pre-trade теза та post-trade аналіз — в одному місці, готові до публікації в Telegram.</p>
+    </div>
+    <div class="meta">
+      <span id="today">—</span>
+      <span class="dot-sep"></span>
+      <span>v2.0</span>
+      <span class="dot-sep"></span>
+      <span>Київ</span>
+    </div>
+  </div>
+
+  <!-- ─── STEPS (TABS) ─────────────────────────────────── -->
+  <div class="steps">
+    <button class="step active" onclick="switchTab('mandate',this)">
+      <span class="num">01</span>
+      <span class="lbl">Мандат<small>Правила гри портфелю</small></span>
+    </button>
+    <button class="step" onclick="switchTab('pretrade',this)">
+      <span class="num">02</span>
+      <span class="lbl">Pre-Trade<small>Теза перед входом</small></span>
+    </button>
+    <button class="step" onclick="switchTab('posttrade',this)">
+      <span class="num">03</span>
+      <span class="lbl">Post-Trade<small>Аналіз результату</small></span>
+    </button>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 1 — МАНДАТ
+  ═══════════════════════════════════════════════════════ -->
+  <div id="tab-mandate">
+
+    <div class="section-head">
+      <h3><span class="kicker">01 ·</span>Investment Mandate</h3>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="mode-view" onclick="setMode('view')">
+          <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Перегляд
+        </button>
+        <button class="mode-btn" id="mode-edit" onclick="setMode('edit')">
+          <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Редагувати
+        </button>
+      </div>
+    </div>
+
+    <!-- VIEW -->
+    <div id="mandate-view">
+
+      <div class="stats" id="stat-grid"></div>
+
+      <div class="section">
+        <div class="section-head"><h3>Загальне</h3><span class="hint">Базові параметри портфеля</span></div>
+        <div class="card"><div class="body">
+          <div class="kv"><span class="k">Клієнт / Портфель</span><span class="v" id="v-client">—</span></div>
+          <div class="kv"><span class="k">Мета</span><span class="v" id="v-goal">—</span></div>
+          <div class="kv"><span class="k">Benchmark</span><span class="v" id="v-bench">—</span></div>
+          <div class="kv"><span class="k">Горизонт</span><span class="v" id="v-horizon">—</span></div>
+          <div class="kv"><span class="k">Стиль управління</span><span class="v" id="v-style">—</span></div>
+          <div class="kv"><span class="k">Дозволено</span><span class="v" id="v-allowed">—</span></div>
+          <div class="kv"><span class="k">Заборонено</span><span class="v" id="v-banned">—</span></div>
+        </div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h3>Risk Limits</h3><span class="hint">Жорсткі обмеження</span></div>
+        <div class="card"><div class="body">
+          <div class="kv"><span class="k">Max drawdown</span><span class="v" id="v-dd">—</span></div>
+          <div class="kv"><span class="k">Max risk per idea</span><span class="v" id="v-risk">—</span></div>
+          <div class="kv"><span class="k">Max option loss / квартал</span><span class="v" id="v-opt">—</span></div>
+          <div class="kv"><span class="k">Max sector exposure</span><span class="v" id="v-sector">—</span></div>
+          <div class="kv"><span class="k">Нотатки</span><span class="v" id="v-notes">—</span></div>
+        </div></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" onclick="copyMandate()">
+          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Копіювати для Telegram
+        </button>
+        <span class="status" id="mandate-status" style="display:none"></span>
+      </div>
+    </div>
+
+    <!-- EDIT -->
+    <div id="mandate-edit" style="display:none">
+
+      <div class="section">
+        <div class="section-head"><h3>Клієнт та загальне</h3></div>
+        <div class="card"><div class="body">
+          <div class="grid-2">
+            <div class="field"><label>Клієнт / назва портфеля</label><input class="input" id="e-client" placeholder="Ім'я клієнта або тег"></div>
+            <div class="field"><label>NAV портфеля</label><input class="input" id="e-nav" placeholder="$150,000"></div>
+          </div>
+          <div class="field"><label>Мета портфеля</label><input class="input" id="e-goal"></div>
+          <div class="grid-2">
+            <div class="field"><label>Benchmark</label><input class="input" id="e-bench"></div>
+            <div class="field"><label>Горизонт</label><input class="input" id="e-horizon"></div>
+          </div>
+          <div class="field"><label>Стиль управління</label><input class="input" id="e-style"></div>
+          <div class="field">
+            <label>Дозволені інструменти</label>
+            <div class="chips" id="allowed-chips"></div>
+            <p class="hint">Клікніть, щоб додати/прибрати</p>
+          </div>
+          <div class="field">
+            <label>Заборонені інструменти</label>
+            <div class="chips" id="banned-chips"></div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h3>Risk Limits</h3></div>
+        <div class="card"><div class="body">
+          <div class="grid-2">
+            <div class="field"><label>Max drawdown</label><input class="input" id="e-dd"></div>
+            <div class="field"><label>Max risk per idea</label><input class="input" id="e-risk"></div>
+          </div>
+          <div class="grid-2">
+            <div class="field"><label>Max option loss / квартал</label><input class="input" id="e-opt"></div>
+            <div class="field"><label>Max sector exposure</label><input class="input" id="e-sector"></div>
+          </div>
+          <div class="field"><label>Нотатки / особливі умови</label><textarea class="textarea" id="e-notes" placeholder="ESG обмеження, заборонені сектори, валютні преференції…"></textarea></div>
+        </div></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-dark" onclick="saveMandate()">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Зберегти
+        </button>
+        <button class="btn btn-ghost" onclick="resetMandate()">
+          <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.36"/></svg>
+          Скинути до дефолту
+        </button>
+        <button class="btn btn-link" onclick="setMode('view')">Скасувати</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 2 — PRE-TRADE
+  ═══════════════════════════════════════════════════════ -->
+  <div id="tab-pretrade" style="display:none">
+
+    <div class="section">
+      <div class="section-head"><h3><span class="kicker">02 ·</span>Ідентифікація угоди</h3><span class="hint">Що і чому</span></div>
+      <div class="card"><div class="body">
+        <div class="grid-2">
+          <div class="field"><label>Інструмент <span class="req">*</span></label><input class="input" id="pt-ticker" placeholder="XLE, COP, QQQ Put Spread…"></div>
+          <div class="field"><label>Тип угоди</label>
+            <select class="select" id="pt-type"><option>Long</option><option>Short</option><option>Hedge</option><option>Tactical</option><option>Speculative</option></select>
+          </div>
+        </div>
+        <div class="field"><label>Теза — чому має заробити <span class="req">*</span></label><textarea class="textarea" id="pt-thesis" placeholder="Коротко: логіка позиції, ринкова неефективність або каталізатор"></textarea></div>
+        <div class="grid-2">
+          <div class="field"><label>Каталізатор</label><input class="input" id="pt-catalyst" placeholder="Earnings, macro, Fed, oil squeeze…"></div>
+          <div class="field"><label>Горизонт</label><input class="input" id="pt-horizon" placeholder="2 тижні / 1 місяць / 3 місяці"></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Параметри позиції</h3><span class="hint">Entry, target, ризик</span></div>
+      <div class="card"><div class="body">
+        <div class="grid-3">
+          <div class="field"><label>Entry</label><input class="input" id="pt-entry" placeholder="$142.50"></div>
+          <div class="field"><label>Target</label><input class="input" id="pt-target" placeholder="$158.00"></div>
+          <div class="field"><label>Stop / Invalidation</label><input class="input" id="pt-stop" placeholder="$137.00"></div>
+        </div>
+        <div class="grid-3">
+          <div class="field"><label>Розмір (% NAV)</label><input class="input" id="pt-size" placeholder="3%"></div>
+          <div class="field"><label>Max loss</label><input class="input" id="pt-maxloss" placeholder="$500"></div>
+          <div class="field"><label>Payoff / R:R</label><input class="input" id="pt-payoff" placeholder="1 : 2.5"></div>
+        </div>
+        <div class="field"><label>Альтернативний сценарій</label><textarea class="textarea" id="pt-alt" placeholder="Що робимо якщо ринок іде проти: reduce / hold / flip…"></textarea></div>
+        <div class="field"><label>Чому саме зараз</label><textarea class="textarea" id="pt-why" placeholder="Чому вхід сьогодні, а не раніше/пізніше"></textarea></div>
+      </div></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="buildPreTrade()">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Сформувати Thesis
+      </button>
+      <button class="btn btn-ghost" onclick="clearPre()">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        Очистити
+      </button>
+      <span class="error" id="pt-err"></span>
+    </div>
+
+    <div id="pretrade-output" style="display:none">
+      <div class="output">
+        <div class="output-head">
+          <span class="lbl">Telegram · Pre-Trade Thesis</span>
+          <button class="copy" onclick="copyEl('pt-out','pt-copy-label')">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span id="pt-copy-label">Копіювати</span>
+          </button>
+        </div>
+        <div class="output-body" id="pt-out"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 3 — POST-TRADE
+  ═══════════════════════════════════════════════════════ -->
+  <div id="tab-posttrade" style="display:none">
+
+    <div class="section">
+      <div class="section-head"><h3><span class="kicker">03 ·</span>Результат</h3><span class="hint">P&L та теза постфактум</span></div>
+      <div class="card"><div class="body">
+        <div class="grid-2">
+          <div class="field"><label>Інструмент <span class="req">*</span></label><input class="input" id="po-ticker" placeholder="XLE, COP, QQQ…"></div>
+          <div class="field"><label>P&amp;L результат</label><input class="input" id="po-pnl" placeholder="+$820 / −$340"></div>
+        </div>
+        <div class="field"><label>Теза спрацювала?</label>
+          <select class="select" id="po-thesis"><option>Так, повністю</option><option>Частково</option><option>Ні, не спрацювала</option><option>Так, але з інших причин</option></select>
+        </div>
+        <div class="field"><label>Звідки P&amp;L — beta чи alpha?</label><textarea class="textarea" id="po-alpha" placeholder="Ринок +3%, позиція +5% → ~2% alpha…"></textarea></div>
+      </div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Аналіз рішень</h3><span class="hint">Що повторити, що змінити</span></div>
+      <div class="card"><div class="body">
+        <div class="field"><label>Що зроблено правильно</label><textarea class="textarea" id="po-good" placeholder="Правильний timing, дотримано stop, коректна теза…"></textarea></div>
+        <div class="field"><label>Де була помилка</label><textarea class="textarea" id="po-mistake" placeholder="Малий розмір, вийшов зарано, не врахував macro…"></textarea></div>
+        <div class="field"><label>Повторюваність ідеї</label>
+          <select class="select" id="po-repeat"><option>Так — системна ідея</option><option>Частково — треба доробити</option><option>Ні — ситуативний трейд</option></select>
+        </div>
+        <div class="field"><label>Оновлення моделі ринку</label><textarea class="textarea" id="po-model" placeholder="Що тепер думаєте про цей сектор / актив після угоди…"></textarea></div>
+      </div></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="buildPostTrade()">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Сформувати Аналіз
+      </button>
+      <button class="btn btn-ghost" onclick="clearPost()">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        Очистити
+      </button>
+      <span class="error" id="po-err"></span>
+    </div>
+
+    <div id="posttrade-output" style="display:none">
+      <div class="output">
+        <div class="output-head">
+          <span class="lbl">Telegram · Post-Trade Аналіз</span>
+          <button class="copy" onclick="copyEl('po-out','po-copy-label')">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span id="po-copy-label">Копіювати</span>
+          </button>
+        </div>
+        <div class="output-body" id="po-out"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── FOOTER ────────────────────────────────────── -->
+  <footer class="footer">
+    <div>Capital Times Investment Advisor · ТОВ «КЄПІТАЛ ТАЙМС ІНВЕСТМЕНТ АДВАЙЗОР»</div>
+    <div>Внутрішній інструмент · Не для розповсюдження</div>
+  </footer>
+
+</div>
+
+<script>
+/* ── DATA ─────────────────────────────────────── */
+const DEFAULTS = {
+  client:'', nav:'',
+  goal:'Навчання + абсолютна дохідність + контроль downside',
+  bench:'SPY (S&P 500 Total Return)',
+  horizon:'12 місяців, квартальний перегляд',
+  style:'Активна позиційна стратегія — ETF, акції, опціони',
+  dd:'−10%',
+  risk:'1–2%',
+  opt:'3–5%',
+  sector:'30–35%',
+  notes:'',
+  allowed:['ETF','Акції','Опціони','Cash','Short/Hedge'],
+  banned:['Naked options','Margin leverage','Illiquid names']
+};
+
+const ALL_ALLOWED = ['ETF','Акції','Опціони','Cash','Short/Hedge','Ф\'ючерси','Крипто ETF'];
+const ALL_BANNED  = ['Naked options','Margin leverage','Illiquid names','Крипто','Penny stocks'];
+
+let mandate = JSON.parse(JSON.stringify(DEFAULTS));
+
+/* ── TABS ─────────────────────────────────────── */
+function switchTab(name, el) {
+  ['mandate','pretrade','posttrade'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.step').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ── MODE ─────────────────────────────────────── */
+function setMode(mode) {
+  const isEdit = mode === 'edit';
+  document.getElementById('mandate-view').style.display = isEdit ? 'none' : 'block';
+  document.getElementById('mandate-edit').style.display = isEdit ? 'block' : 'none';
+  document.getElementById('mode-view').classList.toggle('active', !isEdit);
+  document.getElementById('mode-edit').classList.toggle('active', isEdit);
+  if (isEdit) syncEditToForm();
+}
+
+/* ── STAT CARDS ───────────────────────────────── */
+function renderStats() {
+  const grid = document.getElementById('stat-grid');
+  const stats = [
+    { num: mandate.dd     || '—', lbl: 'Max Drawdown' },
+    { num: mandate.risk   || '—', lbl: 'Risk per Idea',  navy:true },
+    { num: mandate.opt    || '—', lbl: 'Option Loss/Q' },
+    { num: mandate.sector || '—', lbl: 'Max Sector Exp', navy:true },
+  ];
+  grid.innerHTML = stats.map(s => `
+    <div class="stat ${s.navy?'navy':''}">
+      <div class="lbl">${s.lbl}</div>
+      <div class="num ${s.num==='—'?'muted':''}">${s.num}</div>
+    </div>`).join('');
+}
+
+/* ── VIEW UPDATE ──────────────────────────────── */
+function updateView() {
+  const set = (id, val, placeholder) => {
+    const el = document.getElementById(id);
+    if (val) { el.textContent = val; el.classList.remove('subtle'); }
+    else { el.textContent = placeholder || '— не задано —'; el.classList.add('subtle'); }
+  };
+  set('v-client',  mandate.client, 'Клієнт не вказано');
+  set('v-goal',    mandate.goal);
+  set('v-bench',   mandate.bench);
+  set('v-horizon', mandate.horizon);
+  set('v-style',   mandate.style);
+  set('v-dd',      mandate.dd);
+  set('v-risk',    mandate.risk);
+  set('v-opt',     mandate.opt);
+  set('v-sector',  mandate.sector);
+  set('v-notes',   mandate.notes, 'Без додаткових нотаток');
+
+  document.getElementById('v-allowed').innerHTML =
+    mandate.allowed.length ? mandate.allowed.map(a => `<span class="badge allow">${a}</span>`).join('') : '<span class="subtle">—</span>';
+  document.getElementById('v-banned').innerHTML =
+    mandate.banned.length  ? mandate.banned.map(b => `<span class="badge deny">${b}</span>`).join('') : '<span class="subtle">—</span>';
+
+  renderStats();
+}
+
+/* ── EDIT SYNC ────────────────────────────────── */
+function syncEditToForm() {
+  ['client','nav','goal','bench','horizon','style','dd','risk','opt','sector','notes'].forEach(k => {
+    document.getElementById('e-'+k).value = mandate[k] || '';
+  });
+  renderChips('allowed-chips', ALL_ALLOWED, mandate.allowed, false);
+  renderChips('banned-chips',  ALL_BANNED,  mandate.banned,  true);
+}
+
+function renderChips(containerId, all, selected, isDeny) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  all.forEach(item => {
+    const on = selected.includes(item);
+    const d = document.createElement('div');
+    d.className = 'chip' + (on ? (isDeny ? ' on-deny' : ' on-allow') : '');
+    d.textContent = item;
+    d.onclick = () => {
+      const isOn = d.classList.contains('on-allow') || d.classList.contains('on-deny');
+      d.classList.remove('on-allow','on-deny');
+      if (!isOn) d.classList.add(isDeny ? 'on-deny' : 'on-allow');
+    };
+    c.appendChild(d);
+  });
+}
+
+function getSelected(containerId, cls) {
+  return [...document.querySelectorAll('#'+containerId+' .'+cls)].map(c => c.textContent);
+}
+
+function saveMandate() {
+  ['client','nav','goal','bench','horizon','style','dd','risk','opt','sector','notes'].forEach(k => {
+    mandate[k] = document.getElementById('e-'+k).value.trim();
+  });
+  mandate.allowed = getSelected('allowed-chips','on-allow');
+  mandate.banned  = getSelected('banned-chips', 'on-deny');
+  updateView();
+  setMode('view');
+}
+
+function resetMandate() {
+  mandate = JSON.parse(JSON.stringify(DEFAULTS));
+  syncEditToForm();
+}
+
+/* ── COPY MANDATE ─────────────────────────────── */
+function copyMandate() {
+  const lines = ['📋 INVESTMENT MANDATE'];
+  if (mandate.client) lines.push(`👤 Клієнт: ${mandate.client}`);
+  if (mandate.nav)    lines.push(`💼 NAV: ${mandate.nav}`);
+  lines.push('');
+  lines.push(`🎯 Мета: ${mandate.goal}`);
+  lines.push(`📊 Benchmark: ${mandate.bench}`);
+  lines.push(`📅 Горизонт: ${mandate.horizon}`);
+  lines.push(`🧠 Стиль: ${mandate.style}`);
+  lines.push('');
+  lines.push(`✅ Дозволено: ${mandate.allowed.join(', ')}`);
+  lines.push(`❌ Заборонено: ${mandate.banned.join(', ')}`);
+  lines.push('');
+  lines.push('⚠️ Risk limits:');
+  lines.push(`• Max drawdown: ${mandate.dd}`);
+  lines.push(`• Max risk per ідею: ${mandate.risk}`);
+  lines.push(`• Max option loss: ${mandate.opt} / квартал`);
+  lines.push(`• Max sector exposure: ${mandate.sector}`);
+  if (mandate.notes) { lines.push(''); lines.push(`📝 Нотатки: ${mandate.notes}`); }
+
+  navigator.clipboard.writeText(lines.join('\n'));
+  const s = document.getElementById('mandate-status');
+  s.style.display = 'inline-flex';
+  s.textContent = 'Скопійовано в буфер обміну';
+  setTimeout(() => s.style.display = 'none', 2200);
+}
+
+/* ── PRE-TRADE ────────────────────────────────── */
+function buildPreTrade() {
+  const ticker = g('pt-ticker'), thesis = g('pt-thesis');
+  document.getElementById('pt-err').textContent = '';
+  if (!ticker || !thesis) { document.getElementById('pt-err').textContent = 'Заповніть тікер та тезу'; return; }
+
+  const type=g('pt-type'),catalyst=g('pt-catalyst'),horizon=g('pt-horizon'),
+        entry=g('pt-entry'),target=g('pt-target'),stop=g('pt-stop'),
+        size=g('pt-size'),maxloss=g('pt-maxloss'),payoff=g('pt-payoff'),
+        alt=g('pt-alt'),why=g('pt-why');
+
+  const p = [];
+  p.push(`📌 PRE-TRADE THESIS — ${ticker.toUpperCase()}`);
+  p.push(`Тип: ${type}`);
+  p.push('');
+  p.push('💡 Теза');
+  p.push(thesis);
+  if (catalyst) { p.push(''); p.push(`⚡️ Каталізатор: ${catalyst}`); }
+  if (horizon)  { p.push(`⏱ Горизонт: ${horizon}`); }
+  p.push('');
+  p.push('📐 Параметри');
+  if (entry)   p.push(`• Entry:    ${entry}`);
+  if (target)  p.push(`• Target:   ${target}`);
+  if (stop)    p.push(`• Stop:     ${stop}`);
+  if (size)    p.push(`• Розмір:   ${size}`);
+  if (maxloss) p.push(`• Max loss: ${maxloss}`);
+  if (payoff)  p.push(`• R:R:      ${payoff}`);
+  if (alt) { p.push(''); p.push('🔄 Якщо ринок проти'); p.push(alt); }
+  if (why) { p.push(''); p.push('🕐 Чому зараз'); p.push(why); }
+
+  document.getElementById('pt-out').textContent = p.join('\n');
+  document.getElementById('pretrade-output').style.display = 'block';
+  document.getElementById('pretrade-output').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* ── POST-TRADE ───────────────────────────────── */
+function buildPostTrade() {
+  const ticker = g('po-ticker');
+  document.getElementById('po-err').textContent = '';
+  if (!ticker) { document.getElementById('po-err').textContent = 'Вкажіть інструмент'; return; }
+
+  const pnl=g('po-pnl'),thesis=g('po-thesis'),alpha=g('po-alpha'),
+        good=g('po-good'),mistake=g('po-mistake'),repeat=g('po-repeat'),model=g('po-model');
+
+  const emoji = {'Так, повністю':'✅','Частково':'🟡','Ні, не спрацювала':'❌','Так, але з інших причин':'⚠️'}[thesis] || '•';
+  const p = [];
+  p.push(`📊 POST-TRADE — ${ticker.toUpperCase()}`);
+  if (pnl) p.push(`💰 P&L: ${pnl}`);
+  p.push('');
+  p.push(`${emoji} Теза: ${thesis}`);
+  if (alpha)   { p.push(''); p.push('📈 Beta vs Alpha'); p.push(alpha); }
+  if (good)    { p.push(''); p.push('✅ Що зроблено правильно'); p.push(good); }
+  if (mistake) { p.push(''); p.push('⚠️ Помилка / що вдосконалити'); p.push(mistake); }
+  p.push('');
+  p.push(`🔁 Повторюваність: ${repeat}`);
+  if (model) { p.push(''); p.push('🧠 Оновлення моделі'); p.push(model); }
+
+  document.getElementById('po-out').textContent = p.join('\n');
+  document.getElementById('posttrade-output').style.display = 'block';
+  document.getElementById('posttrade-output').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* ── HELPERS ──────────────────────────────────── */
+function g(id) { return (document.getElementById(id).value || '').trim(); }
+
+function copyEl(id, lblId) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent);
+  const lbl = document.getElementById(lblId);
+  const prev = lbl.textContent;
+  lbl.textContent = 'Скопійовано ✓';
+  setTimeout(() => lbl.textContent = 'Копіювати', 1800);
+}
+
+function clearPre() {
+  ['pt-ticker','pt-thesis','pt-catalyst','pt-horizon','pt-entry','pt-target','pt-stop','pt-size','pt-maxloss','pt-payoff','pt-alt','pt-why'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el.tagName === 'SELECT') el.selectedIndex = 0; else el.value = '';
+  });
+  document.getElementById('pretrade-output').style.display = 'none';
+  document.getElementById('pt-err').textContent = '';
+}
+
+function clearPost() {
+  ['po-ticker','po-pnl','po-alpha','po-good','po-mistake','po-model'].forEach(id => document.getElementById(id).value = '');
+  ['po-thesis','po-repeat'].forEach(id => document.getElementById(id).selectedIndex = 0);
+  document.getElementById('posttrade-output').style.display = 'none';
+  document.getElementById('po-err').textContent = '';
+}
+
+/* ── INIT ─────────────────────────────────────── */
+(function init() {
+  const d = new Date();
+  const months = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру'];
+  document.getElementById('today').textContent = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  updateView();
+})();
+</script>
+</body>
+</html>
