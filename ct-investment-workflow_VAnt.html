@@ -1566,6 +1566,11 @@ function copyMandate() {
   lines.push(`• Кількість активів (excl. options): ${mandate.assets}`);
   lines.push(`• Max sector exposure: ${mandate.sector}`);
   if (mandate.notes) { lines.push(''); lines.push(`📝 Нотатки: ${mandate.notes}`); }
+  lines.push('');
+  lines.push('🔒 Naked Put — Умовний дозвіл:');
+  lines.push('Умови входу: ліквідні ETF (SPY, QQQ, XLE) або акції з середньоденним обсягом торгівлі > $10M · Strike ≤ 90% ціни (10%+ OTM) · до 30 днів до експірації');
+  if (mandate.npClose) lines.push(`• Обов'язкове закриття при збитку понад ${mandate.npClose} від отриманої премії`);
+  lines.push('• При падінні нижче страйку — закрити або конвертувати в Put Spread. Без права "потримати ще".');
 
   navigator.clipboard.writeText(lines.join('\n'));
   const s = document.getElementById('mandate-status');
@@ -2078,232 +2083,220 @@ let lastPostTrade = null;
 
 const PDF_COLORS = {
   copper:    '#C2652A',
-  copperLt:  '#DD8E5D',
-  copperBg:  '#FDF0E8',
+  copperLt:  '#E8A57A',
+  copperBg:  '#FEF3EC',
   copperDk:  '#A3511F',
   navy:      '#1B365D',
-  navyBg:    '#EAF2F8',
-  black:     '#2D2926',
+  navyMid:   '#2C4A7C',
+  navyBg:    '#EBF1FA',
+  black:     '#111827',
   greyBody:  '#4B5563',
-  greySilv:  '#ADACB2',
-  greyBg:    '#F2F2F2',
+  greySilv:  '#9CA3AF',
+  greyBg:    '#F9FAFB',
+  greyLine:  '#E5E7EB',
   white:     '#FFFFFF',
-  greenBg:   '#E8F5E9',
-  greenTxt:  '#2E7D32',
-  redBg:     '#FFEBEE',
-  redTxt:    '#B71C1C',
-  amberBg:   '#FFF8E1',
-  amberTxt:  '#9A6200'
+  steel:     '#5B8FA8',
+  steelBg:   '#EDF4F8',
+  greenBg:   '#ECFDF5',
+  greenTxt:  '#065F46',
+  redBg:     '#FEF2F2',
+  redTxt:    '#991B1B',
+  amberBg:   '#FFFBEB',
+  amberTxt:  '#92400E'
 };
 
 const A4_WIDTH = 595.28;
 
-function ctPdfDoc(titleEyebrow) {
+/* ─── DOC TEMPLATE ───────────────────── */
+function ctPdfDoc(eyebrow) {
   return {
     pageSize: 'A4',
-    pageMargins: [40, 92, 40, 50],
-    header: function() {
-      return {
-        stack: [
-          { canvas: [{ type: 'rect', x: 0, y: 0, w: A4_WIDTH, h: 8, color: PDF_COLORS.copper }] },
-          { canvas: [{ type: 'rect', x: 0, y: 0, w: A4_WIDTH, h: 46, color: PDF_COLORS.navy }], absolutePosition: { x: 0, y: 8 } },
-          {
-            columns: [
-              {
-                text: [
-                  { text: 'CAPITAL', color: PDF_COLORS.white, fontSize: 12, bold: true, characterSpacing: 1.5 },
-                  { text: '  ×  ', color: PDF_COLORS.copper, fontSize: 14, bold: true },
-                  { text: 'TIMES', color: PDF_COLORS.copperLt, fontSize: 12, bold: true, characterSpacing: 1.5 }
-                ],
-                margin: [40, 26, 0, 0]
-              },
-              {
-                text: (titleEyebrow || '').toUpperCase(),
-                color: PDF_COLORS.greySilv,
-                fontSize: 8,
-                characterSpacing: 1.5,
-                alignment: 'right',
-                margin: [0, 30, 40, 0]
-              }
-            ]
-          }
-        ]
-      };
-    },
-    footer: function(currentPage, pageCount) {
-      return {
-        columns: [
-          { text: 'Capital Times Investment Advisor · Внутрішній документ',
-            color: PDF_COLORS.greySilv, fontSize: 8, margin: [40, 18, 0, 0] },
-          { text: `${currentPage} / ${pageCount}`,
-            color: PDF_COLORS.greySilv, fontSize: 8, alignment: 'right', margin: [0, 18, 40, 0] }
-        ]
-      };
-    },
-    defaultStyle: { font: 'Roboto', fontSize: 10, color: PDF_COLORS.black, lineHeight: 1.35 },
+    pageMargins: [40, 90, 40, 54],
+    header: () => ({
+      stack: [
+        { canvas: [
+          { type: 'rect', x:0, y:0, w:A4_WIDTH, h:3,  color: PDF_COLORS.copper },
+          { type: 'rect', x:0, y:3, w:A4_WIDTH, h:52, color: PDF_COLORS.navy }
+        ]},
+        { columns: [
+            { text: [
+                { text: 'CAPITAL', color: PDF_COLORS.white,    fontSize: 11, bold: true, characterSpacing: 2 },
+                { text: '  ×  ',   color: PDF_COLORS.copperLt, fontSize: 12 },
+                { text: 'TIMES',   color: PDF_COLORS.copperLt, fontSize: 11, bold: true, characterSpacing: 2 }
+              ], margin: [40, -30, 0, 0]
+            },
+            { text: (eyebrow || '').toUpperCase(), color: '#FFFFFF60',
+              fontSize: 7.5, characterSpacing: 2, alignment: 'right', margin: [0, -26, 40, 0] }
+          ]
+        }
+      ]
+    }),
+    footer: (cur, total) => ({
+      columns: [
+        { text: 'CAPITAL × TIMES INVESTMENT MANDATE', color: PDF_COLORS.greySilv, fontSize: 7.5, bold: true, characterSpacing: 1, margin: [40, 20, 0, 0] },
+        { text: `Capital Times Investment Advisor · Внутрішній документ   ${cur} / ${total}`, color: PDF_COLORS.greySilv, fontSize: 8, alignment: 'right', margin: [0, 20, 40, 0] }
+      ]
+    }),
+    defaultStyle: { font: 'Roboto', fontSize: 10, color: PDF_COLORS.black, lineHeight: 1.4 },
     styles: {
-      h1:       { fontSize: 22, bold: true, color: PDF_COLORS.black, margin: [0, 0, 0, 4] },
-      eyebrow:  { fontSize: 8, color: PDF_COLORS.greySilv, characterSpacing: 1.5, margin: [0, 0, 0, 4] },
-      h2:       { fontSize: 9, bold: true, color: PDF_COLORS.greySilv, characterSpacing: 1.2, margin: [0, 16, 0, 8] },
-      kvLabel:  { fontSize: 9, color: PDF_COLORS.greyBody },
-      kvValue:  { fontSize: 10, color: PDF_COLORS.black },
-      statNum:  { fontSize: 16, bold: true, alignment: 'center' },
-      statLbl:  { fontSize: 8, color: PDF_COLORS.greyBody, alignment: 'center', characterSpacing: 0.8 }
+      h1:      { fontSize: 23, bold: true, color: PDF_COLORS.black, margin: [0, 0, 0, 2] },
+      eyebrow: { fontSize: 8,  color: PDF_COLORS.greySilv, characterSpacing: 2, margin: [0, 0, 0, 4] },
+      kvLabel: { fontSize: 9,  color: PDF_COLORS.greyBody },
+      kvValue: { fontSize: 10, color: PDF_COLORS.black }
     }
   };
 }
 
-function pdfTitle(eyebrow, mainText, accent, rightStack) {
+/* ─── SECTION LABEL ──────────────────── */
+function pdfSectionLabel(text, accentColor) {
+  const acc = accentColor || PDF_COLORS.copper;
   return {
-    columns: [
-      {
-        stack: [
-          { text: eyebrow.toUpperCase(), style: 'eyebrow' },
-          { text: [
-            { text: mainText.split(' ')[0] + ' ', style: 'h1' },
-            { text: (mainText.split(' ').slice(1).join(' ') || accent || ''), style: 'h1', color: PDF_COLORS.copper }
-          ]}
-        ]
-      },
-      rightStack ? { stack: rightStack, alignment: 'right', margin: [0, 8, 0, 0] } : {}
+    stack: [
+      { text: text.toUpperCase(), fontSize: 8, bold: true, color: PDF_COLORS.greySilv, characterSpacing: 1.5 },
+      { canvas: [{ type: 'line', x1: 0, y1: 3, x2: 515, y2: 3, lineWidth: 2, lineColor: acc }] }
     ],
+    margin: [0, 20, 0, 12]
+  };
+}
+
+/* ─── CARD WRAPPER ───────────────────── */
+function pdfCard(items, accentColor) {
+  const content = items.filter(Boolean);
+  if (!content.length) return null;
+  const acc = accentColor || PDF_COLORS.copper;
+  return {
+    table: {
+      widths: ['*'],
+      heights: [3, 'auto'],
+      body: [
+        [{ text: '', fillColor: acc, border: [false,false,false,false] }],
+        [{ stack: content, fillColor: PDF_COLORS.white,
+           border: [true,false,true,true],
+           borderColor: [PDF_COLORS.greyLine,'',PDF_COLORS.greyLine,PDF_COLORS.greyLine],
+           margin: [20, 16, 20, 16] }]
+      ]
+    },
+    layout: { paddingLeft:()=>0, paddingRight:()=>0, paddingTop:()=>0, paddingBottom:()=>0, hLineWidth:()=>0, vLineWidth:()=>0 },
+    margin: [0, 0, 0, 14]
+  };
+}
+
+/* ─── KV TABLE ───────────────────────── */
+function pdfKv(rows) {
+  const r = rows.filter(row => row && row[1] != null && row[1] !== '');
+  if (!r.length) return null;
+  return {
+    table: {
+      widths: [145, '*'],
+      body: r.map(([k, v], i) => [
+        { text: k || '', fontSize: 9, color: PDF_COLORS.greyBody,
+          border: [false,false,false, i < r.length-1], borderColor:['','','',PDF_COLORS.greyLine],
+          margin: [0, 8, 12, 8] },
+        { text: v || '—', fontSize: 10, color: PDF_COLORS.black,
+          border: [false,false,false, i < r.length-1], borderColor:['','','',PDF_COLORS.greyLine],
+          margin: [0, 8, 0, 8] }
+      ])
+    },
+    layout: { paddingLeft:()=>0, paddingRight:()=>0, paddingTop:()=>0, paddingBottom:()=>0,
+              hLineWidth:(i,n)=> i===n.table.body.length ? 0 : 0.5, hLineColor:()=>PDF_COLORS.greyLine, vLineWidth:()=>0 }
+  };
+}
+
+/* ─── STAT ROW ───────────────────────── */
+function pdfStatRow(stats) {
+  return {
+    table: {
+      widths: stats.map(()=>'*'),
+      heights: [3, 'auto'],
+      body: [
+        stats.map(s => ({ text:'', fillColor: s.color||PDF_COLORS.copper, border:[false,false,false,false] })),
+        stats.map(s => ({
+          stack: [
+            { text: s.num||'—', fontSize:18, bold:true, color: s.color||PDF_COLORS.copper, alignment:'center', margin:[4,10,4,3] },
+            { text: (s.lbl||'').toUpperCase(), fontSize:7.5, color:PDF_COLORS.greySilv, alignment:'center', characterSpacing:0.8, margin:[4,0,4,10] }
+          ],
+          fillColor: PDF_COLORS.white,
+          border: [true,false,true,true],
+          borderColor: [PDF_COLORS.greyLine,'',PDF_COLORS.greyLine,PDF_COLORS.greyLine]
+        }))
+      ]
+    },
+    layout: { paddingLeft:()=>0, paddingRight:()=>0, paddingTop:()=>0, paddingBottom:()=>0,
+              hLineWidth:()=>0, vLineWidth:(i,n)=>(i===0||i===n.table.widths.length)?0:6, vLineColor:()=>PDF_COLORS.white },
     margin: [0, 0, 0, 22]
   };
 }
 
-function pdfKv(rows) {
-  return {
-    table: {
-      widths: [150, '*'],
-      body: rows.filter(r => r).map(([k, v]) => [
-        { text: k, style: 'kvLabel', border: [false, false, false, true],
-          borderColor: ['', '', '', PDF_COLORS.greyBg], margin: [0, 6, 8, 6] },
-        { text: (v || '—'), style: 'kvValue', border: [false, false, false, true],
-          borderColor: ['', '', '', PDF_COLORS.greyBg], margin: [0, 6, 0, 6] }
-      ])
-    },
-    layout: {
-      paddingLeft: () => 0, paddingRight: () => 0,
-      paddingTop: () => 0, paddingBottom: () => 0,
-      hLineWidth: (i, node) => i === node.table.body.length ? 0 : 0.5,
-      hLineColor: () => PDF_COLORS.greyBg,
-      vLineWidth: () => 0
-    }
-  };
-}
-
-function pdfStatRow(stats) {
-  // 4 кольорові статкартки в ряд
-  const widths = stats.map(() => '*');
-  const headRow = stats.map(s => ({
-    text: '', fillColor: s.color || PDF_COLORS.copper,
-    border: [false, false, false, false]
-  }));
-  const bodyRow = stats.map(s => ({
-    stack: [
-      { text: s.num || '—', style: 'statNum', color: s.color || PDF_COLORS.copper, margin: [4, 10, 4, 4] },
-      { text: (s.lbl || '').toUpperCase(), style: 'statLbl', margin: [4, 0, 4, 12] }
-    ],
-    fillColor: PDF_COLORS.greyBg,
-    border: [false, false, false, false]
-  }));
-  return {
-    table: { widths, heights: (i) => i === 0 ? 3 : 'auto', body: [headRow, bodyRow] },
-    layout: {
-      paddingLeft: () => 0, paddingRight: () => 0,
-      paddingTop: () => 0, paddingBottom: () => 0,
-      hLineWidth: () => 0,
-      vLineWidth: (i, node) => (i === 0 || i === node.table.widths.length) ? 0 : 6,
-      vLineColor: () => PDF_COLORS.white
-    },
-    margin: [0, 0, 0, 18]
-  };
-}
-
-function pdfBlock(text, opts = {}) {
+/* ─── ACCENT BLOCK ───────────────────── */
+function pdfBlock(text, opts={}) {
   return {
     table: {
       widths: ['*'],
-      body: [[{
-        text: text || '—',
-        fillColor: opts.bg || PDF_COLORS.greyBg,
-        color: opts.color || PDF_COLORS.black,
-        border: [false, false, false, false],
-        margin: [16, 12, 16, 12],
-        preserveLeadingSpaces: true
-      }]]
+      body: [[{ text: text||'—', fillColor: opts.bg||PDF_COLORS.greyBg,
+                color: opts.color||PDF_COLORS.black, border:[false,false,false,false],
+                fontSize:9.5, margin:[14,10,14,10], preserveLeadingSpaces:true }]]
     },
-    layout: {
-      paddingLeft: () => 0, paddingRight: () => 0,
-      paddingTop: () => 0, paddingBottom: () => 0,
-      hLineWidth: () => 0,
-      vLineWidth: (i, node) => i === 0 ? 3 : 0,
-      vLineColor: () => opts.accent || PDF_COLORS.copper
-    },
-    margin: [0, 0, 0, opts.tight ? 6 : 12]
+    layout: { paddingLeft:()=>0, paddingRight:()=>0, paddingTop:()=>0, paddingBottom:()=>0,
+              hLineWidth:()=>0, vLineWidth:(i)=>i===0?3:0, vLineColor:()=>opts.accent||PDF_COLORS.copper },
+    margin: [0, 0, 0, opts.tight?4:10]
   };
 }
 
-function pdfHeroBlock(stackItems) {
-  return {
-    table: {
-      widths: ['*'],
-      body: [[{
-        stack: stackItems.filter(Boolean),
-        fillColor: PDF_COLORS.navy,
-        border: [false, false, false, false],
-        margin: [22, 20, 22, 22]
-      }]]
-    },
-    layout: {
-      paddingLeft: () => 0, paddingRight: () => 0,
-      paddingTop: () => 0, paddingBottom: () => 0,
-      hLineWidth: () => 0, vLineWidth: () => 0
-    },
-    margin: [0, 0, 0, 18]
-  };
-}
-
+/* ─── TWO COLUMN ─────────────────────── */
 function pdfTwoCol(left, right) {
   return {
     table: {
       widths: ['*', '*'],
       body: [[
-        {
-          stack: [
-            { text: (left.label || '').toUpperCase(), fontSize: 8, bold: true,
-              color: left.color || PDF_COLORS.navy, characterSpacing: 1, margin: [0, 0, 0, 6] },
-            { text: left.value || '—', fontSize: 10, color: left.color || PDF_COLORS.navy }
-          ],
-          fillColor: left.bg || PDF_COLORS.navyBg,
-          border: [false, false, false, false],
-          margin: [14, 12, 14, 14]
-        },
-        {
-          stack: [
-            { text: (right.label || '').toUpperCase(), fontSize: 8, bold: true,
-              color: right.color || PDF_COLORS.copperDk, characterSpacing: 1, margin: [0, 0, 0, 6] },
-            { text: right.value || '—', fontSize: 10, color: right.color || PDF_COLORS.copperDk }
-          ],
-          fillColor: right.bg || PDF_COLORS.copperBg,
-          border: [false, false, false, false],
-          margin: [14, 12, 14, 14]
-        }
+        { stack: [
+            { text:(left.label||'').toUpperCase(), fontSize:8, bold:true, color:left.color||PDF_COLORS.navy, characterSpacing:1, margin:[0,0,0,5] },
+            { text:left.value||'—', fontSize:9.5, color:left.color||PDF_COLORS.navy, lineHeight:1.4 }
+          ], fillColor:left.bg||PDF_COLORS.navyBg, border:[false,false,false,false], margin:[14,12,14,14] },
+        { stack: [
+            { text:(right.label||'').toUpperCase(), fontSize:8, bold:true, color:right.color||PDF_COLORS.copperDk, characterSpacing:1, margin:[0,0,0,5] },
+            { text:right.value||'—', fontSize:9.5, color:right.color||PDF_COLORS.copperDk, lineHeight:1.4 }
+          ], fillColor:right.bg||PDF_COLORS.copperBg, border:[false,false,false,false], margin:[14,12,14,14] }
       ]]
     },
-    layout: {
-      paddingLeft: () => 0, paddingRight: () => 0,
-      paddingTop: () => 0, paddingBottom: () => 0,
-      hLineWidth: () => 0,
-      vLineWidth: (i, node) => (i === 0 || i === 2) ? 0 : 8,
-      vLineColor: () => PDF_COLORS.white
-    },
+    layout: { paddingLeft:()=>0, paddingRight:()=>0, paddingTop:()=>0, paddingBottom:()=>0,
+              hLineWidth:()=>0, vLineWidth:(i,n)=>(i===0||i===2)?0:6, vLineColor:()=>PDF_COLORS.white },
     margin: [0, 0, 0, 14]
   };
 }
 
+/* ─── HERO BLOCK (pre-trade) ─────────── */
+function pdfHeroBlock(stackItems) {
+  return {
+    table: {
+      widths: ['*'],
+      body: [[{ stack: stackItems.filter(Boolean), fillColor: PDF_COLORS.navy,
+                border:[false,false,false,false], margin:[22,20,22,20] }]]
+    },
+    layout: { paddingLeft:()=>0, paddingRight:()=>0, paddingTop:()=>0, paddingBottom:()=>0, hLineWidth:()=>0, vLineWidth:()=>0 },
+    margin: [0, 0, 0, 18]
+  };
+}
+
+/* ─── TITLE BLOCK ────────────────────── */
+function pdfTitle(eyebrow, mainText, accent, rightStack) {
+  const words = mainText.split(' ');
+  return {
+    columns: [
+      { stack: [
+          { text: eyebrow.toUpperCase(), style:'eyebrow' },
+          { text: [
+              { text: words[0] + (words.length > 1 ? ' ' : ''), style:'h1' },
+              words.length > 1 ? { text: words.slice(1).join(' '), style:'h1', color: PDF_COLORS.copper } : ''
+            ]}
+        ]},
+      rightStack ? { stack: rightStack, alignment:'right', margin:[0,6,0,0] } : {}
+    ],
+    margin: [0, 0, 0, 20]
+  };
+}
+
 function sanitizeFilename(s) {
-  return String(s || '').replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'untitled';
+  return String(s||'').replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40)||'untitled';
 }
 
 function checkPdfReady() {
@@ -2319,60 +2312,72 @@ function buildMandatePdf() {
   if (!checkPdfReady()) return;
   const today = new Date();
   const dateIso = today.toISOString().slice(0, 10);
-  const dateUa = today.toLocaleDateString('uk-UA');
+  const dateUa  = today.toLocaleDateString('uk-UA');
 
   const doc = ctPdfDoc('Investment Mandate');
   doc.content = [
+
     pdfTitle('Portfolio Management', 'INVESTMENT MANDATE', 'MANDATE', [
       { text: dateUa, color: PDF_COLORS.black, fontSize: 11, bold: true },
       { text: mandate.client || '—', color: PDF_COLORS.greyBody, fontSize: 9, margin: [0, 2, 0, 0] }
     ]),
 
     pdfStatRow([
-      { num: mandate.expectedYield || '—', lbl: 'Expected Yield (12М)', color: PDF_COLORS.copper },
-      { num: mandate.dd     || '—', lbl: 'Max Drawdown',     color: PDF_COLORS.navy },
-      { num: mandate.risk   || '—', lbl: 'Risk per Idea',    color: PDF_COLORS.copper },
-      { num: mandate.sector || '—', lbl: 'Max Sector Exp',   color: PDF_COLORS.navy }
+      { num: mandate.expectedYield||'—', lbl: 'Expected Yield (12М)', color: PDF_COLORS.copper },
+      { num: mandate.dd            ||'—', lbl: 'Max Drawdown',         color: PDF_COLORS.navy },
+      { num: mandate.risk          ||'—', lbl: 'Risk per Idea',        color: PDF_COLORS.copper },
+      { num: mandate.sector        ||'—', lbl: 'Max Sector Exp',       color: PDF_COLORS.navy }
     ]),
 
-    { text: 'ЗАГАЛЬНЕ', style: 'h2' },
+    // ── ЗАГАЛЬНЕ
+    pdfSectionLabel('Загальне'),
     pdfKv([
-      ['Клієнт / Портфель', mandate.client],
-      ['NAV портфеля',      mandate.nav],
-      ['Мета',              mandate.goal],
-      ['Benchmark',         mandate.bench],
-      ['Горизонт',          mandate.horizon],
-      ['Стиль управління',  mandate.style]
+      mandate.client ? ['Клієнт / Портфель', mandate.client] : null,
+      ['NAV портфеля',     mandate.nav],
+      ['Мета',             mandate.goal],
+      ['Benchmark',        mandate.bench],
+      ['Горизонт',         mandate.horizon],
+      ['Стиль управління', mandate.style]
     ]),
+    mandate.focus ? pdfBlock(mandate.focus, { accent: PDF_COLORS.copper, color: PDF_COLORS.black }) : null,
 
-    { text: 'ІНВЕСТИЦІЙНИЙ ФОКУС', style: 'h2' },
-    pdfBlock(mandate.focus, { accent: PDF_COLORS.copper, color: PDF_COLORS.black }),
-
-    { text: 'ДОЗВОЛЕНО / ЗАБОРОНЕНО', style: 'h2' },
+    // ── ДОЗВОЛЕНО / ЗАБОРОНЕНО
+    pdfSectionLabel('Дозволено / Заборонено'),
     pdfTwoCol(
-      { label: '✓  Дозволено', value: (mandate.allowed || []).join(' · ') || '—',
-        color: PDF_COLORS.navy, bg: PDF_COLORS.navyBg },
-      { label: '✕  Заборонено', value: (mandate.banned || []).join(' · ') || '—',
-        color: PDF_COLORS.copperDk, bg: PDF_COLORS.copperBg }
+      { label:'✓  Дозволено',  value:(mandate.allowed||[]).join(' · ')||'—', color:PDF_COLORS.navy,     bg:PDF_COLORS.navyBg },
+      { label:'✕  Заборонено', value:(mandate.banned ||[]).join(' · ')||'—', color:PDF_COLORS.copperDk, bg:PDF_COLORS.copperBg }
     ),
 
-    { text: 'PERFORMANCE & FEES', style: 'h2' },
-    pdfKv([
-      ['Expected gross yield (12М)', mandate.expectedYield],
-      ['Benchmark',                  mandate.bench]
-    ]),
-    mandate.fees ? pdfBlock(mandate.fees, { accent: PDF_COLORS.copper, color: PDF_COLORS.copperDk, bg: PDF_COLORS.copperBg }) : null,
+    // ── PERFORMANCE & FEES
+    pdfSectionLabel('Performance & Fees'),
+    pdfKv([['Expected gross yield (12М)', mandate.expectedYield]]),
+    mandate.fees ? pdfBlock(mandate.fees, { accent:PDF_COLORS.copper, color:PDF_COLORS.copperDk, bg:PDF_COLORS.copperBg }) : null,
 
-    { text: 'RISK LIMITS', style: 'h2' },
+    // ── RISK LIMITS
+    pdfSectionLabel('Risk Limits', PDF_COLORS.navy),
     pdfKv([
-      ['Max drawdown',                    mandate.dd],
-      ['Max risk per idea',               mandate.risk],
-      ['Кількість активів (excl. options)', mandate.assets],
-      ['Max sector exposure',             mandate.sector]
+      ['Max drawdown',                       mandate.dd],
+      ['Max risk per idea',                  mandate.risk],
+      ['Кількість активів (excl. options)',  mandate.assets],
+      ['Max sector exposure',                mandate.sector]
     ]),
+    mandate.notes ? pdfBlock(mandate.notes, { accent:PDF_COLORS.navy, color:PDF_COLORS.greyBody }) : null,
 
-    mandate.notes ? { text: 'НОТАТКИ', style: 'h2' } : null,
-    mandate.notes ? pdfBlock(mandate.notes, { accent: PDF_COLORS.navy, color: PDF_COLORS.greyBody }) : null
+    // ── NAKED PUT
+    pdfSectionLabel('Naked Put — Умовний дозвіл', PDF_COLORS.steel),
+    { text:'Продаж непокритих путів виводиться зі списку заборонених інструментів за умови суворого дотримання наступних параметрів ризик-менеджменту.',
+      fontSize:9.5, color:PDF_COLORS.greyBody, lineHeight:1.5, margin:[0,0,0,10] },
+    pdfKv([
+      ['Допустимі умови входу',
+        'Інструмент: виключно ліквідні активи — великі ETF (SPY, QQQ, XLE тощо) або акції з середньоденним обсягом торгівлі > $10M\nStrike: не вище 90% від поточної ціни (мінімум 10% OTM)\nГоризонт: до 30 днів до експірації'],
+      ['Ліміти ризику',
+        mandate.npClose
+          ? `Обов'язкове закриття при збитку понад ${mandate.npClose} від отриманої премії`
+          : 'Обов\'язкове закриття при збитку — від отриманої премії'],
+      ['Обов\'язкові умови',
+        'Якщо актив падає нижче страйку до експірації — позиція закривається або конвертується в Put Spread без права "потримати ще".']
+    ])
+
   ].filter(Boolean);
 
   const fname = `CT_Mandate_${sanitizeFilename(mandate.client)}_${dateIso}.pdf`;
