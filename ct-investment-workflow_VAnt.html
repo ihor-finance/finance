@@ -699,12 +699,14 @@ body {
           <div class="ct-grid-2">
             <div class="ct-field"><label>Стратегія опціону</label>
               <select class="ct-select" id="pt-opt-strategy" onchange="onOptStrategyChange()">
-                <option value="long-put">Long Put</option>
-                <option value="long-call">Long Call</option>
+                <option value="long-put">Long Put (Buy)</option>
+                <option value="long-call">Long Call (Buy)</option>
+                <option value="naked-put">Naked Put (Sell Put)</option>
+                <option value="naked-call">Naked Call (Sell Call)</option>
                 <option value="put-spread">Put Spread (Bear)</option>
                 <option value="call-spread">Call Spread (Bull)</option>
                 <option value="protective-put">Protective Put</option>
-                <option value="covered-call">Covered Call</option>
+                <option value="covered-call">Covered Call (Sell)</option>
               </select>
             </div>
             <div class="ct-field"><label>Напрям / тип</label>
@@ -782,8 +784,8 @@ body {
 
           <!-- Options computed -->
           <div class="ct-calc-box">
-            <div class="ct-calc-item"><div class="ct-calc-lbl">Max Loss (Total Cost)</div><div class="ct-calc-val copper empty" id="pt-calc-opt-loss">—</div></div>
-            <div class="ct-calc-item"><div class="ct-calc-lbl">Max Profit</div><div class="ct-calc-val empty" id="pt-calc-opt-profit">—</div></div>
+            <div class="ct-calc-item"><div class="ct-calc-lbl" id="pt-calc-opt-loss-lbl">Max Loss (Total Cost)</div><div class="ct-calc-val copper empty" id="pt-calc-opt-loss">—</div></div>
+            <div class="ct-calc-item"><div class="ct-calc-lbl" id="pt-calc-opt-profit-lbl">Max Profit</div><div class="ct-calc-val empty" id="pt-calc-opt-profit">—</div></div>
             <div class="ct-calc-item"><div class="ct-calc-lbl">Breakeven</div><div class="ct-calc-val empty" id="pt-calc-opt-be">—</div></div>
             <div class="ct-calc-item"><div class="ct-calc-lbl">R:R</div><div class="ct-calc-val empty" id="pt-calc-opt-rr">—</div></div>
           </div>
@@ -1628,17 +1630,30 @@ function setTradeMode(mode, tab) {
 function onOptStrategyChange() {
   const val = document.getElementById('pt-opt-strategy').value;
   const isSpread = val.includes('spread');
+  const isSell   = val === 'naked-put' || val === 'naked-call' || val === 'covered-call';
+
   document.getElementById('pt-opt-single-fields').style.display = isSpread ? 'none'  : 'block';
   document.getElementById('pt-opt-spread-fields').style.display = isSpread ? 'block' : 'none';
+
   const dirMap = {
     'long-put':       'Buy · Bearish · Debit',
     'long-call':      'Buy · Bullish · Debit',
+    'naked-put':      'Sell · Bullish / Neutral · Credit',
+    'naked-call':     'Sell · Bearish / Neutral · Credit',
     'put-spread':     'Bear Put Spread · Debit',
     'call-spread':    'Bull Call Spread · Debit',
     'protective-put': 'Buy · Hedge · Debit',
     'covered-call':   'Sell · Neutral · Credit'
   };
   document.getElementById('pt-opt-direction').value = dirMap[val] || '';
+
+  // Update calc box labels based on buy vs sell
+  if (!isSpread) {
+    const lossLbl = document.getElementById('pt-calc-opt-loss-lbl');
+    const profLbl = document.getElementById('pt-calc-opt-profit-lbl');
+    if (lossLbl) lossLbl.textContent = isSell ? 'Max Profit (Credit)'     : 'Max Loss (Total Cost)';
+    if (profLbl) profLbl.textContent = isSell ? 'Max Loss (if assigned)'  : 'Max Profit';
+  }
   recalcPreTrade();
 }
 
@@ -1750,13 +1765,24 @@ function recalcPreTrade() {
     const strike  = parseFloat(document.getElementById('pt-opt-strike').value);
     const prem    = parseFloat(document.getElementById('pt-opt-premium').value);
     const qty     = parseFloat(document.getElementById('pt-opt-contracts').value) || 1;
+    const isSell  = strategy === 'naked-put' || strategy === 'naked-call' || strategy === 'covered-call';
+    const isCall  = strategy === 'long-call' || strategy === 'naked-call' || strategy === 'covered-call';
+
     if (isFinite(prem) && prem > 0) {
-      const ml = prem * 100 * qty;
-      const isCall = strategy === 'long-call' || strategy === 'covered-call';
       const be = isFinite(strike) ? (isCall ? strike + prem : strike - prem) : null;
-      const mp = (!isCall && isFinite(strike)) ? (strike - prem) * 100 * qty : null; // put max profit if underlying → 0
-      const rr = mp != null && mp > 0 ? `1 : ${(mp/ml).toFixed(2)}` : null;
-      setOC(fmtMoney(ml), mp != null && mp > 0 ? fmtMoney(mp) : isCall ? '∞' : null, be != null ? be.toFixed(2) : null, rr);
+
+      if (isSell) {
+        // For sell: first slot = Max Profit (credit), second = Max Loss (if assigned)
+        const mp = prem * 100 * qty;
+        const ml_assigned = (isFinite(strike) && !isCall) ? (strike - prem) * 100 * qty : null;
+        setOC(fmtMoney(mp), ml_assigned != null ? fmtMoney(ml_assigned) : '∞', be != null ? be.toFixed(2) : null, null);
+      } else {
+        // Buy: first slot = Max Loss (cost), second = Max Profit
+        const ml = prem * 100 * qty;
+        const mp = (!isCall && isFinite(strike)) ? (strike - prem) * 100 * qty : null;
+        const rr = mp != null && mp > 0 ? `1 : ${(mp/ml).toFixed(2)}` : null;
+        setOC(fmtMoney(ml), mp != null && mp > 0 ? fmtMoney(mp) : isCall ? '∞' : null, be != null ? be.toFixed(2) : null, rr);
+      }
     } else setOC(null, null, null, null);
   }
 }
@@ -1815,6 +1841,28 @@ function extractSymbolFromInput(s) {
 /* ═══════════════════════════════════════════════
    PRE-TRADE — build output
 ═══════════════════════════════════════════════ */
+/* ─── OPTIONS HELPERS ────────────────── */
+function generateOCCSymbol(ticker, expiryStr, optType, strike) {
+  // optType: 'C' or 'P'
+  if (!ticker || !expiryStr || !optType || !isFinite(parseFloat(strike))) return null;
+  const d = new Date(expiryStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const strikeInt = Math.round(parseFloat(strike) * 1000);
+  return `${ticker.toUpperCase()}${yy}${mm}${dd}${optType}${String(strikeInt).padStart(8, '0')}`;
+}
+
+function formatExpiryLong(dateStr) {
+  // "2026-07-17" → "17 JUL 2026"
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  const M = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 function buildPreTrade() {
   const tickerInput = g('pt-ticker');
   const thesis = g('pt-thesis');
@@ -1856,13 +1904,20 @@ function buildPreTrade() {
 
   // ── OPTIONS MODE output ──────────────────────
   if (ptMode === 'options') {
-    const strat   = document.getElementById('pt-opt-strategy').value;
-    const dir     = document.getElementById('pt-opt-direction').value;
+    const strat    = document.getElementById('pt-opt-strategy').value;
     const isSpread = strat.includes('spread');
-    const stratLabels = {
-      'long-put':'Long Put','long-call':'Long Call',
-      'put-spread':'Put Spread (Bear)','call-spread':'Call Spread (Bull)',
-      'protective-put':'Protective Put','covered-call':'Covered Call'
+    const isSell   = strat === 'naked-put' || strat === 'naked-call' || strat === 'covered-call';
+    const isCall   = strat === 'long-call' || strat === 'naked-call' || strat === 'covered-call';
+    const optType  = isCall ? 'C' : 'P';
+
+    const orderVerb = isSell ? 'Sell' : 'Buy';
+    const legLabel  = isCall ? 'Call' : 'Put';
+
+    const typeLabels = {
+      'long-put':      'Put Options',    'long-call':      'Call Options',
+      'naked-put':     'Put Options',    'naked-call':     'Call Options',
+      'put-spread':    'Bear Put Spread','call-spread':    'Bull Call Spread',
+      'protective-put':'Put Options',    'covered-call':   'Call Options'
     };
 
     lastOrder = { orderNum, dateStr, fullDate: new Date().toLocaleDateString('uk-UA'), symbol, name, type:'OPTIONS', thesis, alt, why };
@@ -1871,50 +1926,89 @@ function buildPreTrade() {
     p.push(`📌 Order ${orderNum} / ${dateStr} 🎯 OPTIONS`);
     p.push('');
     p.push(`Ticker: ${symbol}`);
-    if (name) p.push(`Name: ${name}`);
-    p.push(`Strategy: ${stratLabels[strat] || strat}`);
-    p.push(`Direction: ${dir}`);
-    p.push('');
 
     if (isSpread) {
+      // ── SPREAD ──────────────────────────────────
       const ls   = g('pt-opt-long-strike');
       const ss   = g('pt-opt-short-strike');
       const dbt  = g('pt-opt-debit');
       const qty  = g('pt-opt-spread-qty') || '1';
       const exp  = document.getElementById('pt-opt-spread-expiry').value;
-      if (ls)  p.push(`Long leg (Buy):  ${ls} ${strat==='put-spread'?'Put':'Call'}`);
-      if (ss)  p.push(`Short leg (Sell): ${ss} ${strat==='put-spread'?'Put':'Call'}`);
-      if (exp) p.push(`Expiry: ${exp}`);
-      if (dbt) p.push(`Net Debit: $${dbt}/spread · ${qty} contracts`);
+      const expF = formatExpiryLong(exp);
+      const spreadLabel = strat === 'put-spread' ? 'Bear Put Spread' : 'Bull Call Spread';
+
+      p.push(`Type: ${spreadLabel}`);
+      p.push(`Order: Buy Spread (Debit)`);
+      if (ls && ss) p.push(`Option: Buy ${legLabel} Spread ${ls} / ${ss}${expF ? ' · ' + expF : ''}`);
+      p.push(`Amount: ${qty}`);
+      if (dbt) p.push(`Net Debit: $${dbt}/spread`);
+
       const dbtN = parseFloat(dbt), lsN = parseFloat(ls), ssN = parseFloat(ss), qtyN = parseFloat(qty)||1;
       if (isFinite(dbtN) && isFinite(lsN) && isFinite(ssN)) {
-        const w = Math.abs(lsN - ssN);
-        p.push(`Max Loss:   ${fmtMoney(dbtN*100*qtyN)}`);
-        p.push(`Max Profit: ${fmtMoney((w-dbtN)*100*qtyN)}`);
-        p.push(`Breakeven:  ${(strat==='put-spread'?lsN-dbtN:lsN+dbtN).toFixed(2)}`);
-        p.push(`R:R: 1 : ${((w-dbtN)/dbtN).toFixed(2)}`);
+        const w  = Math.abs(lsN - ssN);
+        const ml = dbtN * 100 * qtyN;
+        const mp = (w - dbtN) * 100 * qtyN;
+        const be = strat === 'put-spread' ? lsN - dbtN : lsN + dbtN;
+        p.push(`Total Cost (Max Loss): ${fmtMoney(ml)}`);
+        p.push(`Max Profit: ${fmtMoney(mp)}`);
+        p.push(`Breakeven: $${be.toFixed(2)}`);
+        if (ml > 0) p.push(`R:R: 1 : ${(mp/ml).toFixed(2)}`);
       }
+
     } else {
+      // ── SINGLE OPTION (Buy or Sell) ──────────────
       const strike = g('pt-opt-strike');
       const prem   = g('pt-opt-premium');
       const qty    = g('pt-opt-contracts') || '1';
       const iv     = g('pt-opt-iv');
       const exp    = document.getElementById('pt-opt-expiry').value;
-      const isCall = strat==='long-call'||strat==='covered-call';
-      if (strike) p.push(`Strike: ${strike} ${isCall?'Call':'Put'}`);
-      if (exp)    p.push(`Expiry: ${exp}`);
-      if (prem)   p.push(`Premium: $${prem}/contract · ${qty} contracts`);
-      const premN = parseFloat(prem), strikeN = parseFloat(strike), qtyN = parseFloat(qty)||1;
-      if (isFinite(premN)) {
-        p.push(`Total Cost (Max Loss): ${fmtMoney(premN*100*qtyN)}`);
-        if (isFinite(strikeN)) {
-          const be = isCall ? strikeN+premN : strikeN-premN;
-          p.push(`Breakeven: ${be.toFixed(2)}`);
-          if (!isCall) { const mp = (strikeN-premN)*100*qtyN; if(mp>0) p.push(`Max Profit: ${fmtMoney(mp)}`); }
-          else p.push(`Max Profit: ∞ (unlimited)`);
+      const expF   = formatExpiryLong(exp);
+
+      // OCC symbol (e.g. ERO260717P00025000)
+      const occSym = generateOCCSymbol(symbol, exp, optType, strike);
+      if (occSym) p.push(`Name: ${occSym}`);
+
+      p.push(`Type: ${typeLabels[strat] || strat}`);
+      p.push(`Order: ${orderVerb} ${legLabel}`);
+      if (strike && expF) p.push(`Option: ${orderVerb} ${legLabel} ${strike} / ${expF}`);
+      p.push(`Amount: ${qty}`);
+      if (prem) p.push(`Price: ${prem} GTC`);
+      p.push('');
+
+      const premN   = parseFloat(prem);
+      const strikeN = parseFloat(strike);
+      const qtyN    = parseFloat(qty) || 1;
+
+      if (isFinite(premN) && premN > 0) {
+        if (isSell) {
+          // SELL: credit received = max profit
+          const mp = premN * 100 * qtyN;
+          p.push(`Max Profit: ${fmtMoney(mp)}`);
+          if (isFinite(strikeN)) {
+            const be = isCall ? strikeN + premN : strikeN - premN;
+            p.push(`Breakeven: $${be.toFixed(2)}`);
+            if (!isCall) {
+              // naked put: effective stock purchase if assigned
+              p.push(`Effective Entry if Assigned: $${(strikeN - premN).toFixed(2)}`);
+            }
+          }
+        } else {
+          // BUY: total cost = max loss
+          const ml = premN * 100 * qtyN;
+          p.push(`Total Cost: ${fmtMoney(ml)}`);
+          if (isFinite(strikeN)) {
+            const be = isCall ? strikeN + premN : strikeN - premN;
+            p.push(`Breakeven: $${be.toFixed(2)}`);
+            if (!isCall) {
+              const mp = (strikeN - premN) * 100 * qtyN;
+              if (mp > 0) p.push(`Max Profit: ${fmtMoney(mp)}`);
+            } else {
+              p.push(`Max Profit: ∞`);
+            }
+          }
+          if (iv) p.push(`IV at Entry: ${iv}%`);
         }
       }
-      if (iv) p.push(`IV at Entry: ${iv}%`);
     }
 
     p.push('');
@@ -1922,7 +2016,7 @@ function buildPreTrade() {
     p.push('💡 Теза');
     p.push(thesis);
     if (catalyst) { p.push(''); p.push(`⚡️ Каталізатор: ${catalyst}`); }
-    if (horizon)  { p.push(`⏱ Горизонт: ${horizon}`); }
+    if (horizon)  { p.push(`⏱️ Горизонт: ${horizon}`); }
     if (alt) { p.push(''); p.push('🔄 Що може піти не так?'); p.push(alt); }
     if (why) { p.push(''); p.push('🕐 Чому зараз'); p.push(why); }
 
